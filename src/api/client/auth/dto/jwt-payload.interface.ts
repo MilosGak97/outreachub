@@ -1,3 +1,4 @@
 export interface JwtPayload{
-    userId:string
+    companyId?:string;
+    userId:string;
 }

@@ -3,6 +3,7 @@ import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { FieldType } from '../../enums/field-type.enum';
 import { CrmObjectType } from './crm-object-type.entity';
+import { Company } from '../company.entity';
 
 @Entity('crm-object-fields')
 export class CrmObjectField {
@@ -35,6 +36,11 @@ export class CrmObjectField {
   @IsOptional()
   @Column({ default: false })
   isRequired?: boolean;
+
+  @ApiProperty({ type: () => Company, required: true })
+  @ManyToOne(() => Company, (company) => company.crmObjectFields)
+  company: Company;
+
 
   @ApiProperty({ required: false })
   @IsOptional()

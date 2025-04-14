@@ -17,14 +17,23 @@ export class JwtUserStrategy extends PassportStrategy(Strategy, 'user-jwt') {
   }
 
   async validate(payload: JwtPayload): Promise<User> {
-    const { userId } = payload;
+    const { userId, companyId } = payload;
+    // const { userId, companyId } = payload;  // Assuming the JWT has companyId
+
 
     const user: User = await this.authRepository.findOne({
       where: { id: userId },
+      relations: ['company'], // <- this is crucial
     });
     if (!user) {
       throw new BadRequestException('Could not find the user with provided ID');
     }
-    return user;
+
+    // Optionally handle companyId absence (e.g., user has not created a company yet)
+    if (companyId && user.company?.id !== companyId) {
+        throw new BadRequestException('Invalid company for the user');
+    }
+
+      return user;
   }
 }

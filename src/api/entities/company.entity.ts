@@ -21,6 +21,7 @@ import { CrmObjectType } from './object-related/crm-object-type.entity';
 import { CrmObject } from './object-related/crm-object.entity';
 import { CrmAssociationType } from './object-related/crm-association-type.entity';
 import { CrmObjectAssociation } from './object-related/crm-object-association.entity';
+import { CrmObjectField } from './object-related/crm-object-field.entity';
 
 @Entity('companies')
 export class Company {
@@ -105,21 +106,21 @@ export class Company {
     (): typeof CrmObjectType => CrmObjectType,
     (objectType: CrmObjectType): Company => objectType.company,
   )
-  objectTypes?: CrmObjectType[];
+  crmObjectTypes?: CrmObjectType[];
 
   @ApiProperty({ required: false })
   @OneToMany(
     (): typeof CrmObject => CrmObject,
     (object: CrmObject): Company => object.company,
   )
-  objects?: CrmObject[];
+  crmObjects?: CrmObject[];
 
   @ApiProperty({ required: false })
   @OneToMany(
     (): typeof CrmAssociationType => CrmAssociationType,
     (associationType: CrmAssociationType): Company => associationType.company,
   )
-  associationTypes: CrmAssociationType[];
+  crmAssociationTypes: CrmAssociationType[];
 
   @ApiProperty({ required: false })
   @OneToMany(
@@ -127,7 +128,16 @@ export class Company {
     (objectAssociation: CrmObjectAssociation): Company =>
       objectAssociation.company,
   )
-  objectAssociations?: CrmObjectAssociation[];
+  crmObjectAssociations?: CrmObjectAssociation[];
+
+
+  @ApiProperty({ required: false })
+  @OneToMany(
+    (): typeof CrmObjectField => CrmObjectField,
+    (crmObjectField: CrmObjectField): Company =>
+      crmObjectField.company,
+  )
+  crmObjectFields?: CrmObjectField[];
 
   // Automatically handles 'created at' timestamp
   @ApiProperty()

@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException, HttpException, HttpStatus,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -67,18 +69,19 @@ export class AuthRepository extends Repository<User> {
     return { user, accessToken, refreshToken, passcode };
   }
 
-  async registerDetails(registerDetailsDto: RegisterDetailsDto, user: User):Promise<MessageResponseDto>{
-
-    Object.assign(user, registerDetailsDto)
-    await this.save(user)
+  async registerDetails(
+    registerDetailsDto: RegisterDetailsDto,
+    user: User,
+  ): Promise<MessageResponseDto> {
+    Object.assign(user, registerDetailsDto);
+    await this.save(user);
     return {
-      message: "User details are successfully saved."
-    }
+      message: 'User details are successfully saved.',
+    };
   }
 
   async getUser(token: string): Promise<User> {
     return await this.verifyJwtToken(token);
-
   }
 
   async signIn(
@@ -230,55 +233,59 @@ export class AuthRepository extends Repository<User> {
     return { accessToken, refreshToken };
   }
 
-  async signJwtToken(userId: string, expireIn: string): Promise<string> {
+  async signJwtToken(
+    userId: string,
+    expiresIn: string,
+    companyId?: string,
+  ): Promise<string> {
     try {
-      const payload = { userId, expireIn };
-      const jwtToken = await this.jwtService.sign(payload, {
-        secret: process.env.CLIENT_JWT_SECRET,
-      });
+      const payload: {
+        userId: string;
+        companyId?: string;
+      } = {
+        userId,
+      };
 
-      return jwtToken;
+      if (companyId) {
+        payload.companyId = companyId;
+      }
+
+      return this.jwtService.sign(payload, {
+        secret: process.env.CLIENT_JWT_SECRET,
+        expiresIn, // use this here, not in payload
+      });
     } catch (error) {
       console.error('Error signing JWT token:', error);
       throw new InternalServerErrorException('Failed to generate token');
     }
   }
 
+
   async verifyJwtToken(token: string): Promise<User> {
     try {
-      // Verify the token and check its validity
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: process.env.CLIENT_JWT_SECRET,
       });
 
-      // Optional: Validate specific claims if needed (e.g., issuer, audience)
-      if (!payload) {
-        throw new UnauthorizedException('Invalid token payload');
+      if (!payload?.userId) {
+        throw new UnauthorizedException('Invalid token payload: Missing user ID');
       }
 
-      // Optional: Validate specific claims if needed (e.g., issuer, audience)
-      if (!payload || !payload.userId) {
-        throw new UnauthorizedException(
-          'Invalid token payload: User ID does not exist.',
-        );
-      }
-
-      if (!payload.userId) {
-        throw new ForbiddenException(
-          'User ID does not exist in token payload.',
-        );
-      }
       const user = await this.findOne({ where: { id: payload.userId } });
+
       if (!user) {
         throw new NotFoundException(
-          'User with provided ID through token does not exist.',
+          'User with provided ID from token does not exist.',
         );
       }
 
-      // Return the decoded payload if valid
+      // Optionally attach companyId if needed
+      if (payload.companyId && user.company?.id !== payload.companyId) {
+        throw new UnauthorizedException('Invalid company ID in token');
+      }
+
       return user;
     } catch (error) {
-      // Handle specific JWT errors for better debugging
       if (error.name === 'TokenExpiredError') {
         throw new UnauthorizedException('Token has expired');
       }
@@ -289,12 +296,10 @@ export class AuthRepository extends Repository<User> {
         throw new UnauthorizedException('Token is not yet active');
       }
 
-      // For any other errors, log and throw a generic unauthorized exception
       console.error('JWT Verification Error:', error);
       throw new UnauthorizedException('Could not verify token');
     }
   }
-
 
   async whoAmI(token: string): Promise<WhoAmIDto> {
     try {
@@ -334,8 +339,6 @@ export class AuthRepository extends Repository<User> {
     }
   }
 
-
-
   async refreshAccessToken(refreshToken: string): Promise<{
     newAccessToken: string;
   }> {
@@ -360,7 +363,6 @@ export class AuthRepository extends Repository<User> {
 
       // Fetch admin profile
       const user = await this.findOne({ where: { id: userId } });
-
 
       if (!user) {
         console.error('Admin profile not found for id:', userId);

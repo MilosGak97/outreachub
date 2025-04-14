@@ -10,7 +10,7 @@ export class CrmAssociationType {
   id: string;
 
   @ApiProperty({ type: () => Company })
-  @ManyToOne(():typeof Company=> Company, (company: Company): CrmAssociationType[] => company.associationTypes)
+  @ManyToOne(():typeof Company=> Company, (company: Company): CrmAssociationType[] => company.crmAssociationTypes)
   company: Company;
 
   @ApiProperty()

@@ -19,7 +19,7 @@ export class CrmObjectType {
   id: string; // NOT NULL in DB, required in API
 
   @ApiProperty({ type: () => Company })
-  @ManyToOne((): typeof Company => Company, (company:Company): CrmObjectType[] => company.objectTypes)
+  @ManyToOne((): typeof Company => Company, (company:Company): CrmObjectType[] => company.crmObjectTypes)
   company: Company; // NOT NULL (required relationship)
 
   @ApiProperty()

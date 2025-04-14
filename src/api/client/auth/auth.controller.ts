@@ -19,7 +19,7 @@ import { Request, Response } from 'express';
 import { MessageResponseDto } from 'src/api/responses/message-response.dto';
 import { User } from 'src/api/entities/user.entity';
 import { SetPasswordDto } from './dto/set-password.dto';
-import { GetUser } from './get-user.decorator';
+import { GetUser } from './decorators/get-user.decorator';
 import { SignInDto } from './dto/sign-in.dto';
 import { UserAuthGuard } from './user-auth.guard';
 import { PasscodeDto } from './dto/passcode-dto';

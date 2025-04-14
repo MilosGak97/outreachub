@@ -27,7 +27,7 @@ export class CrmObject {
   objectType: CrmObjectType;
 
   @ApiProperty({ type: () => Company })
-  @ManyToOne(() => Company, (company) => company.objects)
+  @ManyToOne(() => Company, (company) => company.crmObjects)
   company: Company;
 
   @ApiProperty({ required: true })
