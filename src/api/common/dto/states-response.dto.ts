@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { StatesAbbreviation } from '../../../enums/states-abbreviation.enum';
+import { StatesAbbreviation } from '../../enums/states-abbreviation.enum';
 import { IsArray, IsEnum, IsNotEmpty } from 'class-validator';
 
 export class StatesResponseDto {

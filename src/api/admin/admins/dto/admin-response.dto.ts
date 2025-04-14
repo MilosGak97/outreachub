@@ -3,6 +3,7 @@ import { AdminRole } from '../../../enums/admin-role.enum';
 import { AdminStatus } from '../../../enums/admin-status.enum';
 import { IsEnum, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
 
 export class AdminResponseDto {
   @ApiProperty()
@@ -18,17 +19,8 @@ export class AdminResponseDto {
   email: string;
 
   @ApiProperty()
-  @IsString()
-  phoneCountryCode: string;
-
-  @ApiProperty()
-  @IsString()
-  phoneNumberPrefix: string;
-
-  @ApiProperty()
-  @IsString()
-  @Type((): StringConstructor => String)
-  phoneNumber: string;
+  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
+  phoneNumber: PhoneNumberTypeDto;
 
   @ApiProperty({ enum: AdminRole })
   @IsEnum(AdminRole)

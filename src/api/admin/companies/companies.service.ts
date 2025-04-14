@@ -3,9 +3,7 @@ import { CompanyRepository } from '../../repositories/postgres/company.repositor
 import { UserRepository } from '../../repositories/postgres/users.repository';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { GetCompaniesUsersDto } from './dto/get-companies-users.dto';
-import { User } from 'src/api/entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Company } from 'src/api/entities/company.entity';
 import { GetCompaniesResponseDto } from './dto/get-companies-response.dto';
 import { GetCompaniesDto } from './dto/get-companies.dto';
 import { GetCompaniesUsersResponseDto } from './dto/get-companies-users-response.dto';

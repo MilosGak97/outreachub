@@ -24,7 +24,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Set global prefix
-  app.setGlobalPrefix('api');
+  // app.setGlobalPrefix('api');
 
   // Enable global validation
   app.useGlobalPipes(
@@ -52,10 +52,10 @@ async function bootstrap() {
     adminConfig,
     optionAdmin,
   ); // No include option here
-  SwaggerModule.setup('api/admin', app, adminDocument); // Admin Swagger UI
+  SwaggerModule.setup('admin', app, adminDocument); // Admin Swagger UI
 
   // Expose the Admin API OpenAPI JSON
-  app.getHttpAdapter().get('/api/admin/api-json', (req, res) => {
+  app.getHttpAdapter().get('/admin/api-json', (req, res) => {
     res.json(adminDocument);
   });
 
@@ -77,9 +77,9 @@ async function bootstrap() {
     optionClient,
   );
 
-  SwaggerModule.setup('api/client', app, clientDocument); // Client Swagger UI
+  SwaggerModule.setup('client', app, clientDocument); // Client Swagger UI
   // Expose the Client API OpenAPI JSON
-  app.getHttpAdapter().get('/api/client/api-json', (req, res) => {
+  app.getHttpAdapter().get('/client/api-json', (req, res) => {
     res.json(clientDocument);
   });
 

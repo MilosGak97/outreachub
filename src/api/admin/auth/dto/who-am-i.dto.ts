@@ -1,38 +1,33 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AdminRole } from '../../../enums/admin-role.enum';
-import { UserType } from '../../../enums/user-type.enum';
 import { AdminStatus } from '../../../enums/admin-status.enum';
+import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
 
-export class WhoAmIDto{
+export class WhoAmIDto {
   @ApiProperty()
-  id: string
-
-  @ApiProperty()
-  name: string
+  id: string;
 
   @ApiProperty()
-  email: string
+  name: string;
 
   @ApiProperty()
-  emailVerified: boolean
+  email: string;
 
   @ApiProperty()
-  phoneNumber: string
-
-  @ApiProperty({type: 'enum', enum: AdminRole})
-  role: AdminRole
-
-  @ApiProperty({type:'enum', enum: UserType})
-  userType: UserType
-
-  @ApiProperty({type:'enum', enum: AdminStatus})
-  status: AdminStatus
+  emailVerified: boolean;
 
   @ApiProperty()
-  refreshToken: string
+  phoneNumber: PhoneNumberTypeDto;
+
+  @ApiProperty({ type: 'enum', enum: AdminRole })
+  role: AdminRole;
+
+  @ApiProperty({ type: 'enum', enum: AdminStatus})
+  status: AdminStatus;
+
+  @ApiProperty()
+  refreshToken: string;
 
   @ApiProperty()
   initialPassword: boolean
-
-
 }

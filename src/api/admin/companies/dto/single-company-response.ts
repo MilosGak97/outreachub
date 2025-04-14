@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
 import { CompanyStatus } from '../../../enums/company-status.enum';
 import {
   IsEnum,
@@ -7,7 +7,8 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-
+import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+@ApiExtraModels(PhoneNumberTypeDto)
 export class SingleCompanyResponseDto {
   @ApiProperty({ required: true })
   @IsNotEmpty()
@@ -46,18 +47,7 @@ export class SingleCompanyResponseDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  phoneCountryCode?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  phoneNumberPrefix?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumberString()
-  phoneNumber?: string;
+  phoneNumber?: PhoneNumberTypeDto;
 
   @ApiProperty({ required: false })
   @IsOptional()

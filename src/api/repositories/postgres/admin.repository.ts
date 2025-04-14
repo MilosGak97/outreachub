@@ -134,8 +134,6 @@ export class AdminRepository extends Repository<Admin> {
         email,
         role,
         status,
-        phoneCountryCode,
-        phoneNumberPrefix,
         phoneNumber,
       }) => ({
         id: id ?? '/',
@@ -143,9 +141,7 @@ export class AdminRepository extends Repository<Admin> {
         email: email ?? '/',
         role: role,
         status: status,
-        phoneCountryCode: phoneCountryCode ?? '/',
-        phoneNumberPrefix: phoneNumberPrefix ?? '/',
-        phoneNumber: phoneNumber ?? '/',
+        phoneNumber: phoneNumber || null,
       }),
     );
 
@@ -172,8 +168,6 @@ export class AdminRepository extends Repository<Admin> {
     const {
       name,
       email,
-      phoneCountryCode,
-      phoneNumberPrefix,
       phoneNumber,
       role,
     } = createAdminDto;
@@ -195,15 +189,6 @@ export class AdminRepository extends Repository<Admin> {
           HttpStatus.BAD_REQUEST,
         );
       }
-      if (phoneNumber && existingUser.phoneNumber === phoneNumber) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'An admin user with this phone number already exists',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
     }
 
     try {
@@ -214,13 +199,7 @@ export class AdminRepository extends Repository<Admin> {
       const newAdminUser = new Admin();
       newAdminUser.name = name;
       newAdminUser.email = email;
-      newAdminUser.phoneCountryCode = phoneCountryCode
-        ? phoneCountryCode
-        : null;
-      newAdminUser.phoneNumberPrefix = phoneNumberPrefix
-        ? phoneNumberPrefix
-        : null;
-      newAdminUser.phoneNumber = phoneNumber ? phoneNumber : null;
+      newAdminUser.phoneNumber = phoneNumber || null;
       newAdminUser.role = role as AdminRole;
       newAdminUser.password = hashedPassword;
       newAdminUser.createdBy = admin.id;
@@ -264,8 +243,6 @@ export class AdminRepository extends Repository<Admin> {
       id: admin.id,
       name: admin.name,
       email: admin.email,
-      phoneCountryCode: admin.phoneCountryCode,
-      phoneNumberPrefix: admin.phoneNumberPrefix,
       phoneNumber: admin.phoneNumber,
       role: admin.role,
       status: admin.status,
@@ -282,8 +259,6 @@ export class AdminRepository extends Repository<Admin> {
     const {
       name,
       email,
-      phoneCountryCode,
-      phoneNumberPrefix,
       phoneNumber,
       role,
     } = updateAdminDto;
@@ -311,16 +286,6 @@ export class AdminRepository extends Repository<Admin> {
     }
 
     if (phoneNumber) {
-      const phoneExist: Admin = await this.findOne({
-        where: { phoneNumber: phoneNumber },
-      });
-      if (phoneExist && phoneExist.id !== id) {
-        throw new ConflictException(
-          'This phone number is already associated with an existing user.',
-        );
-      }
-      adminData.phoneCountryCode = phoneCountryCode;
-      adminData.phoneNumberPrefix = phoneNumberPrefix;
       adminData.phoneNumber = phoneNumber;
     }
 

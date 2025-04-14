@@ -1,12 +1,12 @@
 import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
-import { PhoneNumbersTypeDto } from './phone-numbers-type.dto';
+import { PhoneNumberTypeDto } from './phone-number-type.dto';
 import { IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 
-@ApiExtraModels(PhoneNumbersTypeDto)
+@ApiExtraModels(PhoneNumberTypeDto)
 export class PhoneNumbersResponseDto{
-  @ApiProperty({ type: [PhoneNumbersTypeDto]})
-  result: PhoneNumbersTypeDto[];
+  @ApiProperty({ type: [PhoneNumberTypeDto]})
+  result: PhoneNumberTypeDto[];
 
 
   @ApiProperty()

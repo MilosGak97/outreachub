@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsEnum,
-  IsNotEmpty, IsNumberString,
+  IsNotEmpty,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -16,6 +16,11 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { CompanyStatus } from 'src/api/enums/company-status.enum';
+import { PhoneNumberTypeDto } from '../common/dto/phone-number-type.dto';
+import { CrmObjectType } from './object-related/crm-object-type.entity';
+import { CrmObject } from './object-related/crm-object.entity';
+import { CrmAssociationType } from './object-related/crm-association-type.entity';
+import { CrmObjectAssociation } from './object-related/crm-object-association.entity';
 
 @Entity('companies')
 export class Company {
@@ -59,7 +64,7 @@ export class Company {
   @IsOptional()
   @IsString()
   @Column({ name: 'zip_code', nullable: true })
-  zipCode: string;
+  zipCode?: string;
 
   @ApiProperty({ required: true })
   @IsString()
@@ -67,29 +72,16 @@ export class Company {
   @Column({ nullable: false })
   website: string;
 
+  // Store the phone object as JSON
   @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @Column({ name: 'phone_country_code', nullable: true })
-  phoneCountryCode?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @Column({ name: 'phone_number_prefix', nullable: true })
-  phoneNumberPrefix?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumberString()
-  @Column({ name: 'phone_number', nullable: true })
-  phoneNumber?: string;
+  @Column({ name: 'phone_number', type: 'json', nullable: true })
+  phoneNumber?: PhoneNumberTypeDto;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsEmail()
-  @Column()
-  email: string;
+  @Column({ nullable: true })
+  email?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -100,13 +92,42 @@ export class Company {
   @ApiProperty({ required: true, enum: CompanyStatus })
   @IsNotEmpty()
   @IsEnum(CompanyStatus)
-  @Column()
-  status: CompanyStatus;
+  @Column({ nullable: true })
+  status?: CompanyStatus;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @OneToMany(() => User, (user) => user.company)
+  @OneToMany((): typeof User => User, (user: User): Company => user.company)
   users?: User[];
+
+  @ApiProperty({ required: false })
+  @OneToMany(
+    (): typeof CrmObjectType => CrmObjectType,
+    (objectType: CrmObjectType): Company => objectType.company,
+  )
+  objectTypes?: CrmObjectType[];
+
+  @ApiProperty({ required: false })
+  @OneToMany(
+    (): typeof CrmObject => CrmObject,
+    (object: CrmObject): Company => object.company,
+  )
+  objects?: CrmObject[];
+
+  @ApiProperty({ required: false })
+  @OneToMany(
+    (): typeof CrmAssociationType => CrmAssociationType,
+    (associationType: CrmAssociationType): Company => associationType.company,
+  )
+  associationTypes: CrmAssociationType[];
+
+  @ApiProperty({ required: false })
+  @OneToMany(
+    (): typeof CrmObjectAssociation => CrmObjectAssociation,
+    (objectAssociation: CrmObjectAssociation): Company =>
+      objectAssociation.company,
+  )
+  objectAssociations?: CrmObjectAssociation[];
 
   // Automatically handles 'created at' timestamp
   @ApiProperty()

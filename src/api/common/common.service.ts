@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { StatesAbbreviation } from '../../enums/states-abbreviation.enum';
+import { StatesAbbreviation } from '../enums/states-abbreviation.enum';
 import { StatesResponseDto } from './dto/states-response.dto';
 import { countries } from 'country-codes-flags-phone-codes';
 import { PhoneNumbersResponseDto } from './dto/phone-numbers-response.dto';

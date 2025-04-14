@@ -132,21 +132,19 @@ export class UserRepository extends Repository<User> {
     const result = companiesUsers.map(
       ({
         id,
-        name,
+        firstName,
+        lastName,
         email,
-        phoneCountryCode,
-        phoneNumberPrefix,
         phoneNumber,
         emailVerified,
         role,
         status,
       }) => ({
         id: id ?? '/',
-        name: name ?? '/',
+        firstName: firstName ?? '/',
+        lastName: lastName ?? '/',
         email: email ?? '/',
-        phoneCountryCode: phoneCountryCode ?? '/',
-        phoneNumberPrefix: phoneNumberPrefix ?? '/',
-        phoneNumber: phoneNumber ?? '/',
+        phoneNumber: phoneNumber ?? null,
         emailVerified: emailVerified,
         role: role,
         status: status,
@@ -184,12 +182,11 @@ export class UserRepository extends Repository<User> {
     }
 
     return {
-      name: user.name ?? '-',
+      firstName: user.firstName ?? '-',
+      lastName: user.lastName ?? '-',
       id: user.id,
       email: user.email ?? '-',
-      phoneCountryCode: user.phoneCountryCode ?? '-',
-      phoneNumberPrefix: user.phoneNumberPrefix ?? '-',
-      phoneNumber: user.phoneNumber ?? '-',
+      phoneNumber: user.phoneNumber ?? null,
       emailVerified: user.emailVerified ?? false,
       role: user.role,
       status: user.status,
@@ -204,7 +201,7 @@ export class UserRepository extends Repository<User> {
   ): Promise<{
     message: string;
   }> {
-    const { name, email, phoneCountryCode, phoneNumberPrefix, phoneNumber, role } = updateUserDto;
+    const { firstName, lastName, email, phoneNumber, role } = updateUserDto;
 
     const user = await this.findOne({
       where: { id: userId },
@@ -214,8 +211,13 @@ export class UserRepository extends Repository<User> {
       throw new NotFoundException('User with this ID does not exist.');
     }
 
-    if (name && user.id != userId) {
-      user.name = name;
+    if (firstName && user.id != userId) {
+      user.firstName = firstName;
+
+    }
+    if (lastName && user.id != userId) {
+      user.lastName = lastName;
+
     }
 
     if (email) {
@@ -229,17 +231,6 @@ export class UserRepository extends Repository<User> {
     }
 
     if (phoneNumber) {
-      const existPhone = await this.findOne({
-        where: { phoneNumber },
-      });
-
-      if (existPhone && existPhone.id != userId) {
-        throw new ConflictException(
-          'User with this phone number already exist.',
-        );
-      }
-      user.phoneCountryCode = phoneCountryCode;
-      user.phoneNumberPrefix = phoneNumberPrefix;
       user.phoneNumber = phoneNumber;
     }
 

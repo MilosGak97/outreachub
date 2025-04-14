@@ -198,7 +198,6 @@ export class AuthRepository extends Repository<Admin> {
         emailVerified: adminProfile.emailVerified,
         phoneNumber: adminProfile.phoneNumber,
         role: adminProfile.role,
-        userType: adminProfile.userType,
         status: adminProfile.status,
         refreshToken: adminProfile.refreshToken,
         initialPassword: adminProfile.initialPassword,
@@ -208,43 +207,6 @@ export class AuthRepository extends Repository<Admin> {
     }
   }
 
-  /*
-  // new method
-  async refreshAccessToken(refreshToken: string): Promise<{
-      newAccessToken: string;
-  }> {
-      console.log('Starting refreshAccessToken method');
-      
-      try {
-          console.log('Received refresh token:', refreshToken);
-          
-          // Verify the refresh token
-          const payload: JwtPayload = await this.jwtService.verify(refreshToken, { secret: process.env.ADMIN_JWT_SECRET });
-          console.log('Refresh token verified successfully. Payload:', payload);
-  
-          const adminId = payload.adminId;
-          console.log('Extracted adminId from payload:', adminId);
-  
-          // Fetch admin profile
-          const adminProfile = await this.findOne({ where: { id: adminId } });
-          console.log('Fetched admin profile:', adminProfile);
-  
-          if (!adminProfile) {
-              console.error('Admin profile not found for id:', adminId);
-              throw new NotFoundException('Didn\'t find the user with that id');
-          }
-  
-          // Create a new access token
-          const newAccessToken = await this.jwtService.sign({ adminId }, { expiresIn: '1h', secret: process.env.ADMIN_JWT_SECRET });
-          console.log('New access token created successfully:', newAccessToken);
-  
-          return { newAccessToken };
-      } catch (error) {
-          console.error('Error in refreshAccessToken:', error);
-          throw new UnauthorizedException('Invalid refresh token');
-      }
-  }
-      */
 
   async refreshAccessToken(refreshToken: string): Promise<{
     newAccessToken: string;

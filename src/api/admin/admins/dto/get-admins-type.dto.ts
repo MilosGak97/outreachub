@@ -1,10 +1,11 @@
 
-import {  ApiProperty } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
 import { AdminRole } from '../../../enums/admin-role.enum';
 import { AdminStatus } from '../../../enums/admin-status.enum';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-
+import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+@ApiExtraModels(PhoneNumberTypeDto)
 export class GetAdminsTypeDto {
   @ApiProperty()
   @IsString()
@@ -30,18 +31,7 @@ export class GetAdminsTypeDto {
   status: AdminStatus;
 
   @ApiProperty()
-  @IsString()
   @IsOptional()
-  phoneCountryCode: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  phoneNumberPrefix: string;
-
-  @ApiProperty()
-  @IsOptional()
-  @IsString()
-  @Type(() => String)
-  phoneNumber: string;
+  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
+  phoneNumber: PhoneNumberTypeDto;
 }

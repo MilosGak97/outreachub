@@ -24,6 +24,7 @@ import { UserRole } from 'src/api/enums/user-role.enum';
 import { UserStatus } from 'src/api/enums/user-status.enum';
 import { UserType } from '../enums/user-type.enum';
 import { Token } from './token.entity';
+import { PhoneNumberTypeDto } from '../common/dto/phone-number-type.dto';
 
 @Entity('users')
 export class User {
@@ -33,8 +34,14 @@ export class User {
 
   @IsString()
   @IsOptional()
-  @Column({ nullable: true })
-  name?: string;
+  @Column({name: 'first_name', nullable: true })
+  firstName?: string;
+
+  @IsString()
+  @IsOptional()
+  @Column({name: 'last_name', nullable: true })
+  lastName?: string;
+
 
   @ApiProperty({ required: true })
   @IsNotEmpty()
@@ -54,10 +61,10 @@ export class User {
   @Column({ name: 'phone_number_prefix', nullable: true })
   phoneNumberPrefix?: string;
 
+// Store the phone object as JSON
   @ApiProperty({ required: false })
-  @IsOptional()
-  @Column({ name: 'phone_number', nullable: true })
-  phoneNumber?: string;
+  @Column({ name: 'phone_number', type: 'json', nullable: true })
+  phoneNumber?: PhoneNumberTypeDto
 
   @ApiProperty({ required: false })
   @IsStrongPassword()
@@ -106,7 +113,12 @@ export class User {
   @ApiProperty({ required: false })
   @IsOptional()
   @OneToMany(() => Token, (token) => token.user)
-  tokens: Token[];
+  tokens?: Token[];
+
+  @ApiProperty()
+  @IsOptional()
+  @Column({ name: 'refresh_token', nullable: true })
+  refreshToken?: string;
 
   // Automatically handles 'created at' timestamp
   @ApiProperty()

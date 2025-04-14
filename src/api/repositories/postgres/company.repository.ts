@@ -13,12 +13,28 @@ import { CompanyStatus } from 'src/api/enums/company-status.enum';
 import { GetCompaniesResponseDto } from '../../admin/companies/dto/get-companies-response.dto';
 import { SingleCompanyResponseDto } from '../../admin/companies/dto/single-company-response';
 import { MessageResponseDto } from '../../responses/message-response.dto';
+import { RegisterCompanyDto } from '../../client/auth/dto/register-company.dto';
+import { User } from '../../entities/user.entity';
 
 @Injectable()
 export class CompanyRepository extends Repository<Company> {
   constructor(private readonly dataSource: DataSource) {
     super(Company, dataSource.createEntityManager());
   }
+
+  async registerCompany(registerCompanyDto: RegisterCompanyDto, user: User){
+    const company = new Company()
+    const {name, website} = registerCompanyDto
+    company.name = name
+    company.website = website
+    company.users = [user]
+    await this.save(company)
+    return {
+      message: 'Successfully registered company',
+    }
+  }
+
+
 
   // method to list all companies
   async getCompanies(
@@ -45,8 +61,6 @@ export class CompanyRepository extends Repository<Company> {
         id,
         name,
         website,
-        phoneCountryCode,
-        phoneNumberPrefix,
         phoneNumber,
         email,
         logoUrl,
@@ -60,9 +74,7 @@ export class CompanyRepository extends Repository<Company> {
         id: id ?? '/',
         name: name ?? '/',
         website: website ?? '/',
-        phoneCountryCode: phoneCountryCode ?? '/',
-        phoneNumberPrefix: phoneNumberPrefix ?? '/',
-        phoneNumber: phoneNumber ?? '/',
+        phoneNumber: phoneNumber || null,
         email: email ?? '/',
         logoUrl: logoUrl ?? '/',
         status: status,
@@ -102,8 +114,6 @@ export class CompanyRepository extends Repository<Company> {
       state: company.state,
       zipCode: company.zipCode,
       website: company.website,
-      phoneCountryCode: company.phoneCountryCode,
-      phoneNumberPrefix: company.phoneNumberPrefix,
       phoneNumber: company.phoneNumber,
       email: company.email,
       logoUrl: company.logoUrl,
@@ -131,8 +141,6 @@ export class CompanyRepository extends Repository<Company> {
       city,
       state,
       zipCode,
-      phoneCountryCode,
-      phoneNumberPrefix,
       phoneNumber,
       email,
       website,
@@ -164,14 +172,6 @@ export class CompanyRepository extends Repository<Company> {
     }
 
     if (phoneNumber) {
-      const exist: Company = await this.findOne({ where: { phoneNumber } });
-      if (exist && exist.id !== id) {
-        throw new ConflictException(
-          'Company with this phone number already exist',
-        );
-      }
-      company.phoneCountryCode = phoneCountryCode;
-      company.phoneNumberPrefix = phoneNumberPrefix;
       company.phoneNumber = phoneNumber;
     }
 

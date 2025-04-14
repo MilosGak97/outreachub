@@ -19,6 +19,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { AdminStatus } from '../enums/admin-status.enum';
 import { AdminRole } from '../enums/admin-role.enum';
 import { UserType } from '../enums/user-type.enum';
+import { PhoneNumberTypeDto } from '../common/dto/phone-number-type.dto';
 
 @Entity('admins')
 export class Admin {
@@ -54,23 +55,10 @@ export class Admin {
   @Column()
   password: string;
 
+// Store the phone object as JSON
   @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @Column({ name: 'phone_country_code', nullable: true })
-  phoneCountryCode?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @Column({ name: 'phone_number_prefix', nullable: true })
-  phoneNumberPrefix?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsPhoneNumber(null)
-  @Column({ name: 'phone_number', nullable: true })
-  phoneNumber?: string;
+  @Column({ name: 'phone_number', type: 'json', nullable: true })
+  phoneNumber?: PhoneNumberTypeDto
 
   @ApiProperty({
     enum: AdminRole,
@@ -90,7 +78,7 @@ export class Admin {
   @IsNotEmpty()
   @IsString()
   @Column({ name: 'created_by', nullable: true })
-  createdBy: string;
+  createdBy?: string;
 
   @ApiProperty({
     description: 'The ENUM status of the Admin User ',

@@ -1,11 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole } from '../../../enums/user-role.enum';
 import { UserStatus } from '../../../enums/user-status.enum';
-import { IsEnum } from 'class-validator';
+import { IsEnum, IsOptional } from 'class-validator';
+import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+import { Type } from 'class-transformer';
 
 export class GetCompaniesUserResponseDto {
   @ApiProperty()
-  name: string;
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
 
   @ApiProperty()
   id: string;
@@ -14,13 +19,9 @@ export class GetCompaniesUserResponseDto {
   email: string;
 
   @ApiProperty()
-  phoneCountryCode: string;
-
-  @ApiProperty()
-  phoneNumberPrefix: string;
-
-  @ApiProperty()
-  phoneNumber: string;
+  @IsOptional()
+  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
+  phoneNumber: PhoneNumberTypeDto;
 
   @ApiProperty()
   emailVerified: boolean;
