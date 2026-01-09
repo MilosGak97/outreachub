@@ -9,17 +9,15 @@ import {
   IsEmail,
   IsOptional,
   IsString,
-  IsPhoneNumber,
   IsEnum,
   IsBoolean,
   IsNotEmpty,
   IsDate,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { AdminStatus } from '../enums/admin-status.enum';
-import { AdminRole } from '../enums/admin-role.enum';
-import { UserType } from '../enums/user-type.enum';
-import { PhoneNumberTypeDto } from '../common/dto/phone-number-type.dto';
+import { AdminStatus } from '../enums/admin/admin-status.enum';
+import { AdminRole } from '../enums/admin/admin-role.enum';
+import { UserType } from '../enums/user/user-type.enum';
 
 @Entity('admins')
 export class Admin {
@@ -55,10 +53,14 @@ export class Admin {
   @Column()
   password: string;
 
-// Store the phone object as JSON
   @ApiProperty({ required: false })
-  @Column({ name: 'phone_number', type: 'json', nullable: true })
-  phoneNumber?: PhoneNumberTypeDto
+  @Column({ name: 'phone_country_code', type: 'varchar', length: 2, nullable: true })
+  phoneCountryCode?: string;
+
+  @ApiProperty({ required: false })
+  @Column({ name: 'phone_number', type: 'varchar', nullable: true })
+  phoneNumber?: string;
+
 
   @ApiProperty({
     enum: AdminRole,

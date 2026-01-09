@@ -1,13 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
-  IsEnum,
+  IsEnum, IsNotEmpty,
   IsOptional,
-  IsString,
+  IsString, Length,
 } from 'class-validator';
-import { AdminRole } from 'src/api/enums/admin-role.enum';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
-
+import { AdminRole } from 'src/api/enums/admin/admin-role.enum';
 export class UpdateAdminDto {
   @ApiProperty({ required: false })
   @IsOptional()
@@ -21,12 +19,20 @@ export class UpdateAdminDto {
   email?: string;
 
 
-  @ApiProperty({ required: false })
+  @ApiProperty({required: false})
   @IsOptional()
-  phoneNumber?: PhoneNumberTypeDto;
+  @IsString()
+  @Length(2, 2)
+  phoneCountryCode?: string;
+
+  @ApiProperty({required: false})
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
 
   @ApiProperty({
     enum: AdminRole, // Enum for available roles
+    enumName: 'AdminRole',
     required: false,
   })
   @IsOptional()

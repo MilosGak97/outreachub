@@ -1,5 +1,5 @@
 import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
-import { PhoneNumberTypeDto } from './phone-number-type.dto';
+import { PhoneNumberTypeDto } from '../phone/dto/phone-number-type.dto';
 import { IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 

@@ -26,7 +26,7 @@ import { MessageResponseDto } from 'src/api/responses/message-response.dto';
 import { AdminAuthGuard } from './admin-auth.guard';
 import { WhoAmIDto } from './dto/who-am-i.dto';
 
-@ApiTags('Auth')
+@ApiTags('auth')
 @Controller('admin/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -154,6 +154,7 @@ export class AuthController {
   @ApiOkResponse({ type: WhoAmIDto })
   async whoAmI(@Req() req: Request): Promise<WhoAmIDto> {
     const token = req.cookies['accessToken'];
+    console.log('token: ', token)
     return await this.authService.whoAmI(token);
   }
 

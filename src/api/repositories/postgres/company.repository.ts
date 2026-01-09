@@ -2,6 +2,7 @@ import { Company } from 'src/api/entities/company.entity';
 import { DataSource, Repository } from 'typeorm';
 import { GetCompaniesDto } from '../../admin/companies/dto/get-companies.dto';
 import {
+  BadRequestException,
   ConflictException,
   HttpException,
   HttpStatus,
@@ -9,29 +10,30 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UpdateCompanyDto } from '../../admin/companies/dto/update-company.dto';
-import { CompanyStatus } from 'src/api/enums/company-status.enum';
+import { CompanyStatus } from 'src/api/enums/user/company-status.enum';
 import { GetCompaniesResponseDto } from '../../admin/companies/dto/get-companies-response.dto';
 import { SingleCompanyResponseDto } from '../../admin/companies/dto/single-company-response';
 import { MessageResponseDto } from '../../responses/message-response.dto';
 import { RegisterCompanyDto } from '../../client/auth/dto/register-company.dto';
 import { User } from '../../entities/user.entity';
+import { PhoneNumberUtil } from '../../common/phone/phone-number.util';
 
 @Injectable()
 export class CompanyRepository extends Repository<Company> {
-  constructor(private readonly dataSource: DataSource) {
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly phoneNumberUtil: PhoneNumberUtil
+              ) {
     super(Company, dataSource.createEntityManager());
   }
 
-  async registerCompany(registerCompanyDto: RegisterCompanyDto, user: User){
-    const company = new Company()
-    const {name, website} = registerCompanyDto
-    company.name = name
-    company.website = website
-    company.users = [user]
-    await this.save(company)
-    return {
-      message: 'Successfully registered company',
-    }
+  async registerCompany(registerCompanyDto: RegisterCompanyDto, user: User): Promise<Company> {
+    const company = new Company();
+    const { name, website } = registerCompanyDto;
+    company.name = name;
+    company.website = website;
+    company.users = [user];
+    return this.save(company);
   }
 
 
@@ -52,9 +54,11 @@ export class CompanyRepository extends Repository<Company> {
         { searchQuery: `%${searchQuery}%` },
       );
     }
-    query.andWhere('(company.status != :status)', { status: 'DELETED' });
-    query.take(limit);
-    query.skip(offset);
+    query.andWhere('(company.status IS NULL OR company.status != :status)', {
+      status: CompanyStatus.DELETED,
+    });
+    query.take(numLimit);
+    query.skip(numOffset);
     const [companies, totalRecords] = await query.getManyAndCount();
     const result = companies.map(
       ({
@@ -70,11 +74,15 @@ export class CompanyRepository extends Repository<Company> {
         city,
         state,
         zipCode,
+        phoneCountryCode
       }) => ({
         id: id ?? '/',
         name: name ?? '/',
         website: website ?? '/',
         phoneNumber: phoneNumber || null,
+        phoneNumberPrefix: phoneCountryCode
+          ? this.phoneNumberUtil.getByCode(phoneCountryCode)
+          : null,
         email: email ?? '/',
         logoUrl: logoUrl ?? '/',
         status: status,
@@ -101,7 +109,7 @@ export class CompanyRepository extends Repository<Company> {
   // method to list single company data
   async getCompany(id: string): Promise<SingleCompanyResponseDto> {
     const company = await this.findOne({ where: { id } });
-    if (!company.id) {
+    if (!company) {
       throw new NotFoundException('Company with this ID is not found.');
     }
 
@@ -115,10 +123,20 @@ export class CompanyRepository extends Repository<Company> {
       zipCode: company.zipCode,
       website: company.website,
       phoneNumber: company.phoneNumber,
+      phoneNumberPrefix: company.phoneCountryCode
+        ? this.phoneNumberUtil.getByCode(company.phoneCountryCode)
+        : null,
       email: company.email,
       logoUrl: company.logoUrl,
       status: company.status,
     };
+  }
+
+  async ensureCompanyExists(id: string): Promise<void> {
+    const company = await this.findOne({ where: { id } });
+    if (!company) {
+      throw new NotFoundException('Company with this ID does not exist.');
+    }
   }
 
   // method to update single company data
@@ -142,6 +160,7 @@ export class CompanyRepository extends Repository<Company> {
       state,
       zipCode,
       phoneNumber,
+      phoneCountryCode,
       email,
       website,
       logoUrl,
@@ -173,6 +192,9 @@ export class CompanyRepository extends Repository<Company> {
 
     if (phoneNumber) {
       company.phoneNumber = phoneNumber;
+    }
+    if(phoneCountryCode) {
+      company.phoneCountryCode = phoneCountryCode;
     }
 
     if (email) {
@@ -242,6 +264,11 @@ export class CompanyRepository extends Repository<Company> {
     const company = await this.findOne({ where: { id } });
     if (!company) {
       throw new NotFoundException('Company with this ID does not exist.');
+    }
+    if (company.status !== CompanyStatus.SUSPENDED) {
+      throw new BadRequestException(
+        'Company must be suspended before it can be deleted.',
+      );
     }
     company.status = CompanyStatus.DELETED;
     await this.save(company);

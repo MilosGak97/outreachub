@@ -5,22 +5,38 @@ import { HealthController } from './app.controller';
 import { AdminModule } from './api/admin/admin.module';
 import { ClientModule } from './api/client/client.module';
 import { ConfigModule } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
 import { Token } from './api/entities/token.entity';
 import { User } from './api/entities/user.entity';
 import { Company } from './api/entities/company.entity';
-import { CrmAssociationType } from './api/entities/object-related/crm-association-type.entity';
-import { CrmObject } from './api/entities/object-related/crm-object.entity';
-import { CrmObjectAssociation } from './api/entities/object-related/crm-object-association.entity';
-import { CrmObjectField } from './api/entities/object-related/crm-object-field.entity';
-import { CrmObjectType } from './api/entities/object-related/crm-object-type.entity';
+import { CrmAssociationType } from './api/entities/object/crm-association-type.entity';
+import { CrmObject } from './api/entities/object/crm-object.entity';
+import { CrmObjectAssociation } from './api/entities/object/crm-object-association.entity';
+import { CrmObjectField } from './api/entities/object/crm-object-field.entity';
+import { CrmObjectType } from './api/entities/object/crm-object-type.entity';
+import { ObjectRelatedModule } from './api/client/object-related/object-related.module';
+import { CrmObjectTypeModule } from './api/client/object-related/crm-object-type/crm-object-type.module';
+import { CommonModule } from './api/common/common.module';
+import { County } from './api/entities/property/county.entity';
+import { Property } from './api/entities/property/property.entity';
+import { PropertyListing } from './api/entities/property/property-listing.entity';
+import { PropertyAiFiltering } from './api/entities/property/property-ai-filtering.entity';
+import { PropertyHomeownerEnrichment } from './api/entities/property/property-homeowner-enrichment.entity';
+import { Dealmachine } from './api/entities/property/dealmachine.entity';
+import { UserExtrasAccess } from './api/entities/property/user-extras-access.entity';
+import { UserVisibleListing } from './api/entities/property/user-visible-listing.entity';
+import { PropertyBaseEnrichment } from './api/entities/property/property-base-enrichment.entity';
+import { PropertyPhotoAsset } from './api/entities/property/property-photo-asset.entity';
+import { PropertySummary } from './api/entities/property/property-summary.entity';
+import { PropertyMosaic } from './api/entities/property/property-mosaic.entity';
+import { WorkerRun } from './api/entities/worker/worker-run.entity';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true, // Makes the configuration accessible globally
     }),
-    MongooseModule.forRoot(process.env.MONGO_URI),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
@@ -41,6 +57,20 @@ import { CrmObjectType } from './api/entities/object-related/crm-object-type.ent
         CrmObjectAssociation,
         CrmObjectField,
         CrmObjectType,
+        // properties-related
+        County,
+        Property,
+        PropertyListing,
+        PropertyAiFiltering,
+        PropertyHomeownerEnrichment,
+        Dealmachine,
+        UserExtrasAccess,
+        UserVisibleListing,
+        PropertyBaseEnrichment,
+        PropertyPhotoAsset,
+        PropertySummary,
+        PropertyMosaic,
+        WorkerRun,
       ],
       autoLoadEntities: true,
       synchronize: true,
@@ -54,6 +84,9 @@ import { CrmObjectType } from './api/entities/object-related/crm-object-type.ent
     EmailModule,
     AdminModule,
     ClientModule,
+    ObjectRelatedModule,
+    CrmObjectTypeModule,
+    CommonModule,
   ],
   controllers: [HealthController],
 })

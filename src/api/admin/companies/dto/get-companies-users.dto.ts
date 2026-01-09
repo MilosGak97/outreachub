@@ -7,8 +7,8 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { UserRole } from 'src/api/enums/user-role.enum';
-import { UserStatus } from 'src/api/enums/user-status.enum';
+import { UserRole } from 'src/api/enums/user/user-role.enum';
+import { UserStatus } from 'src/api/enums/user/user-status.enum';
 
 export class GetCompaniesUsersDto {
   @ApiProperty({ required: false })
@@ -26,12 +26,12 @@ export class GetCompaniesUsersDto {
   @Type(() => Number)
   offset: number;
 
-  @ApiProperty({ required: false, enum: UserStatus, isArray: true })
+  @ApiProperty({ required: false, enum: UserStatus, enumName: 'UserStatus', isArray: true })
   @IsOptional()
   @IsArray()
   status: UserStatus[];
 
-  @ApiProperty({ required: false, enum: UserRole, isArray: true })
+  @ApiProperty({ required: false, enum: UserRole, enumName: 'UserRole', isArray: true })
   @IsOptional()
   @IsArray()
   role: UserRole;

@@ -20,11 +20,10 @@ import {
   IsString,
   IsStrongPassword,
 } from 'class-validator';
-import { UserRole } from 'src/api/enums/user-role.enum';
-import { UserStatus } from 'src/api/enums/user-status.enum';
-import { UserType } from '../enums/user-type.enum';
+import { UserRole } from 'src/api/enums/user/user-role.enum';
+import { UserStatus } from 'src/api/enums/user/user-status.enum';
+import { UserType } from '../enums/user/user-type.enum';
 import { Token } from './token.entity';
-import { PhoneNumberTypeDto } from '../common/dto/phone-number-type.dto';
 
 @Entity('users')
 export class User {
@@ -49,22 +48,15 @@ export class User {
   @Column({ nullable: false })
   email: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @Column({ name: 'phone_country_code', nullable: true })
-  phoneCountryCode: string;
 
   @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @Column({ name: 'phone_number_prefix', nullable: true })
-  phoneNumberPrefix?: string;
+  @Column({ name: 'phone_country_code', type: 'varchar', length: 2, nullable: true })
+  phoneCountryCode?: string;
 
-// Store the phone object as JSON
   @ApiProperty({ required: false })
-  @Column({ name: 'phone_number', type: 'json', nullable: true })
-  phoneNumber?: PhoneNumberTypeDto
+  @Column({ name: 'phone_number', type: 'varchar', nullable: true })
+  phoneNumber?: string;
+
 
   @ApiProperty({ required: false })
   @IsStrongPassword()

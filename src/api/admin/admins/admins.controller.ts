@@ -4,17 +4,16 @@ import {
   Post,
   Get,
   Query,
-  UseGuards,
   Patch,
   Param,
-  Delete,
+  Delete, UseGuards,
 } from '@nestjs/common';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
 import { GetAdminsDto } from './dto/get-admins.dto';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { AdminRole } from '../../enums/admin-role.enum';
+import { AdminRole } from '../../enums/admin/admin-role.enum';
 import { AdminsService } from './admins.service';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 import { GetAdminsResponseDto } from './dto/get-admins-response.dto';
@@ -24,10 +23,10 @@ import { AdminResponseDto } from './dto/admin-response.dto';
 import { GetAdmin } from '../auth/get-admin.decorator';
 import { Admin } from '../../entities/admin.entity';
 
-@ApiTags('Admins')
+@ApiTags('admin')
 @Controller('admin')
-//@UseGuards(AdminAuthGuard, RolesGuard)
-//@Roles(AdminRole.HEAD)
+@UseGuards(AdminAuthGuard, RolesGuard)
+@Roles(AdminRole.HEAD)
 export class AdminsController {
   constructor(private adminsService: AdminsService) {}
 

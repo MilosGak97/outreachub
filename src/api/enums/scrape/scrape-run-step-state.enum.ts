@@ -1,0 +1,6 @@
+export enum ScrapeRunStepState {
+  NOT_SCHEDULED = 'NOT_SCHEDULED',
+  NOT_STARTED = 'NOT_STARTED',
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
+}

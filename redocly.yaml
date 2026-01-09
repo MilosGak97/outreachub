@@ -1,0 +1,86 @@
+# redocly.yaml
+apis:
+  admin:
+    root: docs/openapi.admin.json
+  client:
+    root: docs/openapi.client.json
+
+# Linting rules
+rules:
+  no-unused-components: warn
+  operation-operationId: warn
+
+# Redoc theme configuration (under 'openapi' key)
+openapi:
+  # ═══════════════════════════════════════════════════════════════
+  # SCHEMA EXPANSION - Show all fields without clicking
+  # ═══════════════════════════════════════════════════════════════
+  jsonSamplesExpandLevel: all
+  schemaExpansionLevel: 3
+  expandResponses: "200,201,400,401,403,404"
+  expandSingleSchemaField: true
+
+  # ═══════════════════════════════════════════════════════════════
+  # CODE SAMPLES - JavaScript/TypeScript for React devs
+  # ═══════════════════════════════════════════════════════════════
+  generateCodeSamples:
+    languages:
+      - lang: JavaScript
+        label: Fetch
+      - lang: Node.js
+        label: Axios
+      - lang: curl
+        label: cURL
+
+  # ═══════════════════════════════════════════════════════════════
+  # NAVIGATION & LAYOUT
+  # ═══════════════════════════════════════════════════════════════
+  sortOperationsAlphabetically: false
+  sortTagsAlphabetically: false
+  hideRequestPayloadSample: false
+  hideSingleRequestSampleTab: false
+  requiredPropsFirst: true
+  hideDownloadButton: false
+  disableSearch: false
+  minCharacterLengthToInitSearch: 2
+
+  # ═══════════════════════════════════════════════════════════════
+  # THEME - Colors, Typography, Layout
+  # ═══════════════════════════════════════════════════════════════
+  theme:
+    colors:
+      primary:
+        main: "#6366f1"
+      success:
+        main: "#10b981"
+      warning:
+        main: "#f59e0b"
+      error:
+        main: "#ef4444"
+      text:
+        primary: "#1f2937"
+        secondary: "#6b7280"
+      http:
+        get: "#10b981"
+        post: "#3b82f6"
+        put: "#f59e0b"
+        patch: "#8b5cf6"
+        delete: "#ef4444"
+
+    typography:
+      fontSize: "15px"
+      fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+      headings:
+        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+        fontWeight: "600"
+      code:
+        fontFamily: "JetBrains Mono, Fira Code, Consolas, monospace"
+        fontSize: "13px"
+
+    sidebar:
+      width: "380px"
+      backgroundColor: "#f9fafb"
+
+    rightPanel:
+      backgroundColor: "#1e293b"
+      textColor: "#f1f5f9"

@@ -2,12 +2,15 @@ import { Module } from '@nestjs/common';
 import { CrmObjectFieldService } from './crm-object-field.service';
 import { CrmObjectFieldController } from './crm-object-field.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CrmObject } from '../../../entities/object-related/crm-object.entity';
-import { CrmObjectFieldRepository } from '../../../repositories/postgres/object-related/crm-object-field.repository';
+import { CrmObjectFieldRepository } from '../../../repositories/postgres/object/crm-object-field.repository';
+import { SharedModule } from '../../multi-tenant-setup/shared-module';
+import { CrmObjectField } from '../../../entities/object/crm-object-field.entity';
+import { CrmObjectType } from '../../../entities/object/crm-object-type.entity';
+import { FormulaMetadataService } from './formula/formula-metadata.service';
 
 @Module({
-  providers: [CrmObjectFieldService, CrmObjectFieldRepository],
+  providers: [CrmObjectFieldService, CrmObjectFieldRepository, FormulaMetadataService],
   controllers: [CrmObjectFieldController],
-  imports: [TypeOrmModule.forFeature([CrmObject])]
+  imports: [SharedModule, TypeOrmModule.forFeature([CrmObjectField, CrmObjectType])],
 })
 export class CrmObjectFieldModule {}

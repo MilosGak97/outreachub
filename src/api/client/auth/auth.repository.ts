@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -12,26 +11,29 @@ import {
 import { User } from 'src/api/entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
 import { RegisterDto } from './dto/register.dto';
-import { UserStatus } from 'src/api/enums/user-status.enum';
-import { UserType } from 'src/api/enums/user-type.enum';
+import { UserStatus } from 'src/api/enums/user/user-status.enum';
+import { UserType } from 'src/api/enums/user/user-type.enum';
 import { JsonWebTokenError, JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './dto/jwt-payload.interface';
-import { UserRole } from 'src/api/enums/user-role.enum';
+import { UserRole } from 'src/api/enums/user/user-role.enum';
 import { randomInt } from 'crypto';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { SetPasswordDto } from './dto/set-password.dto';
 import { MessageResponseDto } from 'src/api/responses/message-response.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { PasscodeDto } from './dto/passcode-dto';
-import { ForgotPasswordDto } from './dto/forgot-password-dto';
 import { WhoAmIDto } from './dto/who-am-i.dto';
 import { RegisterDetailsDto } from './dto/register-details.dto';
+import { PhoneNumberUtil } from '../../common/phone/phone-number.util';
+import { EmailDto } from './dto/email-dto';
+import { TOKEN_EXPIRATION } from './constants/auth.constants';
 
 @Injectable()
 export class AuthRepository extends Repository<User> {
   constructor(
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
+    private readonly phoneNumberUtil: PhoneNumberUtil,
   ) {
     super(User, dataSource.createEntityManager());
   }
@@ -47,11 +49,10 @@ export class AuthRepository extends Repository<User> {
     const userExist: User = await this.findOne({ where: { email } });
 
     if (userExist) {
-      throw new ConflictException('User already exist');
+      throw new ConflictException('Unable to complete registration');
     }
 
     const passcode = randomInt(100000, 999999).toString();
-    console.log('Passcode signup: ' + passcode);
     const hashedPasscode = await bcrypt.hash(passcode, 10);
 
     const user = new User();
@@ -63,8 +64,8 @@ export class AuthRepository extends Repository<User> {
     user.passcode = hashedPasscode;
     const savedUser = await this.save(user);
 
-    const accessToken = await this.signJwtToken(savedUser.id, '1h');
-    const refreshToken = await this.signJwtToken(savedUser.id, '30d');
+    const accessToken = await this.signJwtToken(savedUser.id, TOKEN_EXPIRATION.ACCESS_TOKEN);
+    const refreshToken = await this.signJwtToken(savedUser.id, TOKEN_EXPIRATION.REFRESH_TOKEN);
 
     return { user, accessToken, refreshToken, passcode };
   }
@@ -90,24 +91,30 @@ export class AuthRepository extends Repository<User> {
     const { password, email } = signInDto;
 
     const user: User = await this.findOne({ where: { email } });
-    if (!user) {
-      throw new BadRequestException('Please check your login credentials');
+
+    // Use timing-safe comparison to prevent user enumeration
+    if (!user || user.password === null) {
+      // Perform a dummy hash comparison to maintain consistent timing
+      await bcrypt.compare(password, '$2a$10$dummyhashtopreventtimingattack12345678901234567890123456');
+      throw new BadRequestException('Invalid email or password');
     }
 
-    if (user.password === null) {
-      throw new BadRequestException(
-        'Password is not set up yet for this account.',
-      );
-    }
-    console.log('PASSWORD: ' + password);
-    console.log('USER PASSWORD: ' + user.password);
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      throw new BadRequestException('Please check your login credentials');
+      throw new BadRequestException('Invalid email or password');
     }
 
-    const accessToken = await this.signJwtToken(user.id, '1h');
-    const refreshToken = await this.signJwtToken(user.id, '30d');
+    // Check user status before issuing tokens
+    if (user.status === UserStatus.DELETED || user.status === UserStatus.SCHEDULED_DELETE) {
+      throw new UnauthorizedException('Account is no longer active');
+    }
+
+    if (user.status === UserStatus.SUSPENDED) {
+      throw new UnauthorizedException('Account has been suspended. Please contact support.');
+    }
+
+    const accessToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.ACCESS_TOKEN);
+    const refreshToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.REFRESH_TOKEN);
 
     return {
       accessToken,
@@ -161,8 +168,8 @@ export class AuthRepository extends Repository<User> {
 
     await this.save(user);
 
-    const accessToken = await this.signJwtToken(user.id, '1h');
-    const refreshToken = await this.signJwtToken(user.id, '30d');
+    const accessToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.ACCESS_TOKEN);
+    const refreshToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.REFRESH_TOKEN);
 
     return {
       accessToken,
@@ -196,13 +203,13 @@ export class AuthRepository extends Repository<User> {
     };
   }
 
-  async forgotPasswordToken(forgotPasswordDto: ForgotPasswordDto): Promise<{
+  async forgotPasswordToken(emailDto: EmailDto): Promise<{
     forgotPasswordToken: string;
     user: User;
   }> {
-    const { email } = forgotPasswordDto;
-    let forgotPasswordToken;
-    const user = await this.findOne({ where: { email } });
+    const { email } = emailDto;
+    let forgotPasswordToken: string;
+    const user: User = await this.findOne({ where: { email } });
 
     if (!user) {
       forgotPasswordToken = null;
@@ -212,11 +219,15 @@ export class AuthRepository extends Repository<User> {
       };
     }
 
-    forgotPasswordToken = await this.signJwtToken(user.id, '7d');
+    forgotPasswordToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.FORGOT_PASSWORD);
     return {
       forgotPasswordToken,
       user,
     };
+  }
+
+  async resendEmailVerification(userId: string){
+    return await this.signJwtToken(userId, TOKEN_EXPIRATION.EMAIL_VERIFICATION)
   }
 
   async forgotPasswordVerification(token: string) {
@@ -227,8 +238,8 @@ export class AuthRepository extends Repository<User> {
     user.statusUpdatedAt = new Date();
     await this.save(user);
 
-    const accessToken = await this.signJwtToken(user.id, '1hr');
-    const refreshToken = await this.signJwtToken(user.id, '30d');
+    const accessToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.ACCESS_TOKEN);
+    const refreshToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.REFRESH_TOKEN);
 
     return { accessToken, refreshToken };
   }
@@ -323,17 +334,21 @@ export class AuthRepository extends Repository<User> {
       }
 
       return {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        phoneNumber: user.phoneNumber,
-        role: user.role,
-        status: user.status,
-        refreshToken: user.refreshToken,
-        companyId: user.company ? user.company.id : null,
+        id:                 user.id,                              // non-nullable by design
+        firstName:          user.firstName  ?? null,
+        lastName:           user.lastName   ?? null,
+        email:              user.email      ?? null,
+        emailVerified:      user.emailVerified ?? false,          // or whatever default makes sense
+        phoneNumber:        user.phoneNumber  ?? null,
+        phoneNumberPrefix:  user.phoneCountryCode
+          ? this.phoneNumberUtil.getByCode(user.phoneCountryCode)
+          : null,
+        role:               user.role        ?? null,
+        status:             user.status      ?? null,
+        refreshToken:       user.refreshToken ?? null,
+        companyId:          user.company?.id  ?? null,
       };
+
     } catch (error) {
       throw new UnauthorizedException(error);
     }
@@ -341,47 +356,44 @@ export class AuthRepository extends Repository<User> {
 
   async refreshAccessToken(refreshToken: string): Promise<{
     newAccessToken: string;
+    newRefreshToken: string;
+    user: User;
   }> {
-    console.log('Starting refreshAccessToken method');
-
     if (!refreshToken) {
-      console.error('No refresh token provided');
       throw new UnauthorizedException('No refresh token found');
     }
 
     try {
-      console.log('Received refresh token:', refreshToken);
-
-      // Verify the refresh token
+      // Verify the refresh token JWT
       const payload: JwtPayload = await this.jwtService.verify(refreshToken, {
         secret: process.env.CLIENT_JWT_SECRET,
       });
-      console.log('Refresh token verified successfully. Payload:', payload);
 
       const userId = payload.userId;
-      console.log('Extracted adminId from payload:', userId);
 
-      // Fetch admin profile
+      // Fetch user profile
       const user = await this.findOne({ where: { id: userId } });
 
       if (!user) {
-        console.error('Admin profile not found for id:', userId);
-        throw new NotFoundException('Didnt find the user with that id');
+        throw new NotFoundException('User not found');
       }
 
-      // Create a new access token
+      // Check user status before issuing new tokens
+      if (user.status === UserStatus.DELETED || user.status === UserStatus.SCHEDULED_DELETE) {
+        throw new UnauthorizedException('Account is no longer active');
+      }
 
-      const payload2: JwtPayload = { userId };
+      if (user.status === UserStatus.SUSPENDED) {
+        throw new UnauthorizedException('Account has been suspended. Please contact support.');
+      }
 
-      const newAccessToken = this.jwtService.sign(payload2, {
-        secret: process.env.CLIENT_JWT_SECRET,
-      });
-      console.log('New access token created successfully:', newAccessToken);
+      // Create new tokens with rotation
+      const newAccessToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.ACCESS_TOKEN);
+      const newRefreshToken = await this.signJwtToken(user.id, TOKEN_EXPIRATION.REFRESH_TOKEN);
 
-      return { newAccessToken };
+      return { newAccessToken, newRefreshToken, user };
     } catch (error) {
-      console.error('Error in refreshAccessToken:', error);
-      if (error instanceof JsonWebTokenError) {
+      if (error instanceof JsonWebTokenError || error.name === 'TokenExpiredError') {
         throw new UnauthorizedException('Invalid or expired refresh token');
       }
       throw new UnauthorizedException('Error processing refresh token');

@@ -1,0 +1,8 @@
+export enum WorkerRunStatus {
+  QUEUED = 'QUEUED',
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  STOPPED = 'STOPPED',
+  CANCELED = 'CANCELED',
+}

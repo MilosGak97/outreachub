@@ -12,21 +12,25 @@ import { EmailService } from 'src/api/email/email.service';
 import { JwtUserStrategy } from './jwtUser.strategy';
 import { Company } from '../../entities/company.entity';
 import { CompanyRepository } from '../../repositories/postgres/company.repository';
+import { TokenCleanupService } from './services/token-cleanup.service';
+import { TemplatesModule } from '../../admin/templates/templates.module';
 
 @Module({
   imports: [
     JwtModule.register({secret: process.env.CLIENT_JWT_SECRET}),
     PassportModule.register({defaultStrategy: 'jwt'}),
     TypeOrmModule.forFeature([User, Token, Company]),
+    TemplatesModule,
   ],
   controllers: [AuthController],
   providers: [
-    AuthService, 
+    AuthService,
     AuthRepository,
     TokenRepository,
     EmailService,
     JwtUserStrategy,
-    CompanyRepository
+    CompanyRepository,
+    TokenCleanupService,
   ],
   
 exports: [JwtUserStrategy, PassportModule],

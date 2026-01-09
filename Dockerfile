@@ -29,6 +29,7 @@ WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/package*.json ./
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/docs ./docs
 
 # Add a non-root user to improve security
 RUN addgroup appgroup && adduser -S appuser -G appgroup

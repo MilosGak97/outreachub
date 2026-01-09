@@ -1,10 +1,10 @@
 
 import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
-import { AdminRole } from '../../../enums/admin-role.enum';
-import { AdminStatus } from '../../../enums/admin-status.enum';
+import { AdminRole } from '../../../enums/admin/admin-role.enum';
+import { AdminStatus } from '../../../enums/admin/admin-status.enum';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+import { PhoneNumberTypeDto } from '../../../common/phone/dto/phone-number-type.dto';
 @ApiExtraModels(PhoneNumberTypeDto)
 export class GetAdminsTypeDto {
   @ApiProperty()
@@ -22,16 +22,18 @@ export class GetAdminsTypeDto {
   @Type(() => String)
   email: string;
 
-  @ApiProperty({ enum: AdminRole })
+  @ApiProperty({ enum: AdminRole, enumName: 'AdminRole' })
   @IsEnum(AdminRole)
   role: AdminRole;
 
-  @ApiProperty({ enum: AdminStatus })
+  @ApiProperty({ enum: AdminStatus, enumName: 'AdminStatus' })
   @IsEnum(AdminStatus)
   status: AdminStatus;
 
   @ApiProperty()
+  phoneNumber: string
+
+  @ApiProperty()
   @IsOptional()
-  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
-  phoneNumber: PhoneNumberTypeDto;
+  phonePrefix?: PhoneNumberTypeDto | null
 }

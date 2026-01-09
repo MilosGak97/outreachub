@@ -8,15 +8,16 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JsonWebTokenError, JwtService } from '@nestjs/jwt';
-import { AdminStatus } from 'src/api/enums/admin-status.enum';
+import { AdminStatus } from 'src/api/enums/admin/admin-status.enum';
 import { DataSource, Repository } from 'typeorm';
 import { SignInDto } from '../dto/sign-in-admin.dto';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { JwtPayload } from '../dto/jwt-payload.interface';
 import { PasswordResetDto } from '../dto/password-reset.dto';
 import { Admin } from 'src/api/entities/admin.entity';
 import { MessageResponseDto } from 'src/api/responses/message-response.dto';
 import { WhoAmIDto } from '../dto/who-am-i.dto';
+import { PhoneNumberUtil } from '../../../common/phone/phone-number.util';
 
 @Injectable()
 export class AuthRepository extends Repository<Admin> {
@@ -25,6 +26,7 @@ export class AuthRepository extends Repository<Admin> {
   constructor(
     private readonly dataSource: DataSource,
     private readonly jwtService: JwtService,
+    private readonly phoneNumberUtil: PhoneNumberUtil,
   ) {
     super(Admin, dataSource.createEntityManager());
   }
@@ -79,7 +81,7 @@ export class AuthRepository extends Repository<Admin> {
 
     if (!user) {
       this.logger.warn(`Sign-in failed: No user found with email: ${email}`);
-      throw new UnauthorizedException('No user found with this email');
+      throw new UnauthorizedException('Check your credentials');
     }
 
     this.logger.log(`User found with ID: ${user.id}. Verifying password...`);
@@ -165,6 +167,8 @@ export class AuthRepository extends Repository<Admin> {
       user.initialPassword = false;
     }
 
+    user.emailVerified = true;
+
     await this.save(user);
 
     return {
@@ -175,6 +179,7 @@ export class AuthRepository extends Repository<Admin> {
   // new method
   async whoAmI(token: string): Promise<WhoAmIDto> {
     try {
+      console.log('token in rep: ', token)
       if (!token) {
         throw new HttpException('Token is missing', HttpStatus.BAD_REQUEST);
       }
@@ -183,24 +188,25 @@ export class AuthRepository extends Repository<Admin> {
         secret: process.env.ADMIN_JWT_SECRET,
       });
 
+
       const adminId = payload.adminId;
-
-      const adminProfile = await this.findOne({ where: { id: adminId } });
-
-      if (!adminProfile) {
+      const admin = await this.findOne({ where: { id: adminId } });
+      if (!admin) {
         throw new NotFoundException('Not found admin with provided admin id');
       }
 
-      return {
-        id: adminProfile.id,
-        name: adminProfile.name,
-        email: adminProfile.email,
-        emailVerified: adminProfile.emailVerified,
-        phoneNumber: adminProfile.phoneNumber,
-        role: adminProfile.role,
-        status: adminProfile.status,
-        refreshToken: adminProfile.refreshToken,
-        initialPassword: adminProfile.initialPassword,
+      return {  id:               admin.id,                        // required
+        name:             admin.name         ?? null,     // string or null
+        email:            admin.email        ?? null,     // string or null
+        emailVerified:    admin.emailVerified ?? false,   // boolean default false
+        phoneNumber:      admin.phoneNumber   ?? null,     // string or null
+        phoneNumberPrefix:  admin.phoneCountryCode
+          ? this.phoneNumberUtil.getByCode(admin.phoneCountryCode)
+          : null,
+        role:             admin.role         ?? null,     // enum or null
+        status:           admin.status       ?? null,     // enum or null
+        refreshToken:     admin.refreshToken ?? null,     // string or null
+        initialPassword:  admin.initialPassword ?? null,  // string or null
       };
     } catch (error) {
       throw new UnauthorizedException(error);

@@ -2,19 +2,13 @@
 import {
   IsNotEmpty,
   IsString,
-  IsOptional,
   IsEmail,
   IsEnum,
   Length,
-  IsNumberString, ValidateNested,
 } from 'class-validator';
-import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
-import { AdminRole } from '../../../enums/admin-role.enum';
-import { Column } from 'typeorm';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
-import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
+import { AdminRole } from '../../../enums/admin/admin-role.enum';
 
-@ApiExtraModels(PhoneNumberTypeDto)
 export class CreateAdminDto {
   @ApiProperty({
     required: true, // Indicates this field is required
@@ -28,17 +22,20 @@ export class CreateAdminDto {
   @IsEmail()
   email: string;
 
-// Remove separate phoneCountryCode and phoneNumberPrefix if you want everything inside phoneObject.
-  // If you need to keep them, they can still be used as underlying values.
-  // For now, we include only the nested phoneObject property.
-  @ApiProperty({ required: false, type: PhoneNumberTypeDto, nullable: true })
-  @IsOptional()
-  @ValidateNested()
-  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
-  phoneNumber?: PhoneNumberTypeDto;
+  @ApiProperty({required: true})
+  @IsNotEmpty()
+  @IsString()
+  @Length(2, 2)
+  phoneCountryCode: string;
+
+  @ApiProperty({required: true})
+  @IsNotEmpty()
+  @IsString()
+  phoneNumber: string;
 
   @ApiProperty({
     enum: AdminRole, // Enum for available roles
+    enumName: 'AdminRole',
     required: true,
   })
   @IsNotEmpty()

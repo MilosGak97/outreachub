@@ -1,13 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
-  IsEnum,
+  IsEnum, IsNotEmpty,
   IsOptional,
-  IsString,
+  IsString, Length,
 } from 'class-validator';
-import { UserRole } from 'src/api/enums/user-role.enum';
-import { Type } from 'class-transformer';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+import { UserRole } from 'src/api/enums/user/user-role.enum';
 
 export class UpdateUserDto {
   @ApiProperty({ required: false })
@@ -26,12 +24,18 @@ export class UpdateUserDto {
   email?: string;
 
 
-  @ApiProperty({ required: false })
+  @ApiProperty({required: false})
   @IsOptional()
-  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
-  phoneNumber?: PhoneNumberTypeDto;
+  @IsString()
+  @Length(2, 2)
+  phoneCountryCode?: string;
 
-  @ApiProperty({ required: false, enum: UserRole })
+  @ApiProperty({required: false})
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
+  @ApiProperty({ required: false, enum: UserRole, enumName: 'UserRole' })
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;

@@ -10,17 +10,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { GetAdminsDto } from 'src/api/admin/admins/dto/get-admins.dto';
-import * as bcrypt from 'bcrypt';
-import { AdminRole } from 'src/api/enums/admin-role.enum';
-import { AdminStatus } from 'src/api/enums/admin-status.enum';
+import * as bcrypt from 'bcryptjs';
+import { AdminRole } from 'src/api/enums/admin/admin-role.enum';
+import { AdminStatus } from 'src/api/enums/admin/admin-status.enum';
 import { EmailService } from 'src/api/email/email.service';
 import { JwtService } from '@nestjs/jwt';
 import { UpdateAdminDto } from 'src/api/admin/admins/dto/update-admin.dto';
-import { UserType } from 'src/api/enums/user-type.enum';
+import { UserType } from 'src/api/enums/user/user-type.enum';
 import { GetAdminsResponseDto } from 'src/api/admin/admins/dto/get-admins-response.dto';
 import { GetAdminsTypeDto } from '../../admin/admins/dto/get-admins-type.dto';
 import { AdminResponseDto } from '../../admin/admins/dto/admin-response.dto';
 import { MessageResponseDto } from '../../responses/message-response.dto';
+import { PhoneNumberUtil } from '../../common/phone/phone-number.util';
+import { PhoneNumberTypeDto } from '../../common/phone/dto/phone-number-type.dto';
 
 @Injectable()
 export class AdminRepository extends Repository<Admin> {
@@ -30,6 +32,7 @@ export class AdminRepository extends Repository<Admin> {
     private readonly dataSource: DataSource,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly phoneNumberUtil: PhoneNumberUtil
   ) {
     super(Admin, dataSource.createEntityManager());
   }
@@ -54,12 +57,9 @@ export class AdminRepository extends Repository<Admin> {
     email: string,
     randomPassword?: string,
   ): Promise<boolean> {
-    const jwtPayload = { userId: userId, expireIn: '3600' };
-    const verifyUrl = `${process.env.BASE_URL}admin/auth/email?jwtToken=${encodeURIComponent(this.jwtService.sign(jwtPayload, { secret: process.env.ADMIN_JWT_SECRET }))}`;
-    const emailSent = await this.emailService.authEmail(
+ const emailSent = await this.emailService.authEmail(
       email,
-      verifyUrl,
-      randomPassword || '',
+     randomPassword || '',
     );
     if (!emailSent) {
       throw new HttpException(
@@ -95,7 +95,7 @@ export class AdminRepository extends Repository<Admin> {
     if (searchQuery) {
       query.andWhere(
         '(adminUser.name ILIKE :searchQuery OR adminUser.email ILIKE :searchQuery OR adminUser.phone_number ILIKE :searchQuery)',
-        { searchQuery: `%${searchQuery}` },
+        { searchQuery: `%${searchQuery}%` },
       );
     }
 
@@ -127,21 +127,20 @@ export class AdminRepository extends Repository<Admin> {
     query.skip(offsetNumber);
 
     const [admins, totalRecords] = await query.getManyAndCount();
+
+
     const result: GetAdminsTypeDto[] = admins.map(
-      ({
-        id,
-        name,
-        email,
+      ({ id, name, email, role, status, phoneNumber, phoneCountryCode }) => ({
+        id:    id ?? '/',
+        name:  name ?? '/',
+        email: email ?? '/',
         role,
         status,
-        phoneNumber,
-      }) => ({
-        id: id ?? '/',
-        name: name ?? '/',
-        email: email ?? '/',
-        role: role,
-        status: status,
-        phoneNumber: phoneNumber || null,
+        phoneNumber: phoneNumber ?? '/',
+        // only call getByCode when phoneCountryCode is a real string
+        phonePrefix: phoneCountryCode
+          ? this.phoneNumberUtil.getByCode(phoneCountryCode)
+          : null,
       }),
     );
 
@@ -239,11 +238,15 @@ export class AdminRepository extends Repository<Admin> {
       throw new NotFoundException('Admin with this ID is not found.');
     }
 
+    const phoneNumberPrefix: PhoneNumberTypeDto | null = admin.phoneCountryCode
+      ? this.phoneNumberUtil.getByCode(admin.phoneCountryCode)
+      : null;
     return {
       id: admin.id,
       name: admin.name,
       email: admin.email,
       phoneNumber: admin.phoneNumber,
+      phonePrefix: phoneNumberPrefix,
       role: admin.role,
       status: admin.status,
     };
@@ -260,6 +263,7 @@ export class AdminRepository extends Repository<Admin> {
       name,
       email,
       phoneNumber,
+      phoneCountryCode,
       role,
     } = updateAdminDto;
 
@@ -287,6 +291,10 @@ export class AdminRepository extends Repository<Admin> {
 
     if (phoneNumber) {
       adminData.phoneNumber = phoneNumber;
+    }
+
+    if(phoneCountryCode){
+      adminData.phoneCountryCode = phoneCountryCode;
     }
 
     if (role) {

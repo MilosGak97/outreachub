@@ -15,13 +15,12 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
-import { CompanyStatus } from 'src/api/enums/company-status.enum';
-import { PhoneNumberTypeDto } from '../common/dto/phone-number-type.dto';
-import { CrmObjectType } from './object-related/crm-object-type.entity';
-import { CrmObject } from './object-related/crm-object.entity';
-import { CrmAssociationType } from './object-related/crm-association-type.entity';
-import { CrmObjectAssociation } from './object-related/crm-object-association.entity';
-import { CrmObjectField } from './object-related/crm-object-field.entity';
+import { CompanyStatus } from 'src/api/enums/user/company-status.enum';
+import { CrmObjectType } from './object/crm-object-type.entity';
+import { CrmObject } from './object/crm-object.entity';
+import { CrmAssociationType } from './object/crm-association-type.entity';
+import { CrmObjectAssociation } from './object/crm-object-association.entity';
+import { CrmObjectField } from './object/crm-object-field.entity';
 
 @Entity('companies')
 export class Company {
@@ -73,10 +72,15 @@ export class Company {
   @Column({ nullable: false })
   website: string;
 
-  // Store the phone object as JSON
+
   @ApiProperty({ required: false })
-  @Column({ name: 'phone_number', type: 'json', nullable: true })
-  phoneNumber?: PhoneNumberTypeDto;
+  @Column({ name: 'phone_country_code', type: 'varchar', length: 2, nullable: true })
+  phoneCountryCode?: string;
+
+  @ApiProperty({ required: false })
+  @Column({ name: 'phone_number', type: 'varchar', nullable: true })
+  phoneNumber?: string;
+
 
   @ApiProperty({ required: false })
   @IsOptional()

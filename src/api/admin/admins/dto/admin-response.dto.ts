@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AdminRole } from '../../../enums/admin-role.enum';
-import { AdminStatus } from '../../../enums/admin-status.enum';
+import { AdminRole } from '../../../enums/admin/admin-role.enum';
+import { AdminStatus } from '../../../enums/admin/admin-status.enum';
 import { IsEnum, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+import { PhoneNumberTypeDto } from '../../../common/phone/dto/phone-number-type.dto';
 
 export class AdminResponseDto {
   @ApiProperty()
@@ -19,14 +19,17 @@ export class AdminResponseDto {
   email: string;
 
   @ApiProperty()
-  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
-  phoneNumber: PhoneNumberTypeDto;
+  phoneNumber: string
 
-  @ApiProperty({ enum: AdminRole })
+  @ApiProperty()
+  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
+  phonePrefix: PhoneNumberTypeDto;
+
+  @ApiProperty({ enum: AdminRole, enumName: 'AdminRole' })
   @IsEnum(AdminRole)
   role: AdminRole;
 
-  @ApiProperty({ enum: AdminStatus })
+  @ApiProperty({ enum: AdminStatus, enumName: 'AdminStatus' })
   @IsEnum(AdminStatus)
   status: AdminStatus;
 }

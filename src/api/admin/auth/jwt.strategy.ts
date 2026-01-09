@@ -4,7 +4,7 @@ import { Strategy } from "passport-jwt";
 import { JwtPayload } from "./dto/jwt-payload.interface"; 
 import { AuthRepository } from "./repository/auth.repository"; 
 import { Admin } from "src/api/entities/admin.entity";
-import { UserType } from "src/api/enums/user-type.enum";
+import { UserType } from "src/api/enums/user/user-type.enum";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'admin-jwt'){

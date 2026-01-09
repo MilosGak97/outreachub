@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   CrmObjectAssociationRepository
-} from '../../../repositories/postgres/object-related/crm-object-association.repository';
+} from '../../../repositories/postgres/object/crm-object-association.repository';
 
 @Injectable()
 export class CrmObjectAssociationService {

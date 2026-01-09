@@ -1,19 +1,23 @@
-import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNumberString, IsOptional, IsString } from 'class-validator';
-import { StatesAbbreviation } from '../../../enums/states-abbreviation.enum';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
-import { Type } from 'class-transformer';
-@ApiExtraModels(PhoneNumberTypeDto)
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty, IsNumberString, IsOptional, IsString, Length } from 'class-validator';
+import { StatesAbbreviation } from '../../../enums/common/states-abbreviation.enum';
+
 export class UpdateCompanyDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({required: false})
   @IsOptional()
-  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
-  phoneNumber?: PhoneNumberTypeDto | null;
+  @IsString()
+  @Length(2, 2)
+  phoneCountryCode?: string;
+
+  @ApiProperty({required: false})
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -45,7 +49,7 @@ export class UpdateCompanyDto {
   @IsString()
   city?: string;
 
-  @ApiProperty({ required: false, enum: StatesAbbreviation })
+  @ApiProperty({ required: false, enum: StatesAbbreviation, enumName: 'StatesAbbreviation' })
   @IsOptional()
   @IsEnum(StatesAbbreviation)
   state?: StatesAbbreviation;

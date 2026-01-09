@@ -29,6 +29,14 @@ export class JwtUserStrategy extends PassportStrategy(Strategy, 'user-jwt') {
       throw new BadRequestException('Could not find the user with provided ID');
     }
 
+    // CRITICAL, MUST BE ADDED.
+    // we have to get it in jwtPayload
+    // and to include it in Sign tokens
+/*
+    if (!payload || !payload.exp || Date.now() >= payload.exp * 1000) {
+      throw new BadRequestException('JWT is expired');
+    }
+*/
     // Optionally handle companyId absence (e.g., user has not created a company yet)
     if (companyId && user.company?.id !== companyId) {
         throw new BadRequestException('Invalid company for the user');

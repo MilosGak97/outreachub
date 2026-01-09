@@ -9,7 +9,9 @@ import { PassportModule } from '@nestjs/passport';
 import { EmailService } from 'src/api/email/email.service';
 import { Company } from 'src/api/entities/company.entity';
 import { CompaniesController } from './companies.controller';
+import { CompaniesUsersController } from './users/users.controller';
 import { CompaniesService } from './companies.service';
+import { CompaniesUsersService } from './users/users.service';
 
 @Module({
   imports:
@@ -18,7 +20,13 @@ import { CompaniesService } from './companies.service';
     JwtModule.register({secret: 'topSecret51'}),
     PassportModule.register({defaultStrategy: 'jwt'})
   ] ,
-  controllers: [CompaniesController],
-  providers: [CompaniesService, CompanyRepository, UserRepository, EmailService]
+  controllers: [CompaniesController, CompaniesUsersController],
+  providers: [
+    CompaniesService,
+    CompaniesUsersService,
+    CompanyRepository,
+    UserRepository,
+    EmailService,
+  ],
 })
 export class CompaniesModule {}

@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '../../../enums/user-role.enum';
-import { UserStatus } from '../../../enums/user-status.enum';
+import { UserRole } from '../../../enums/user/user-role.enum';
+import { UserStatus } from '../../../enums/user/user-status.enum';
 import { IsEnum, IsOptional } from 'class-validator';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+import { PhoneNumberTypeDto } from '../../../common/phone/dto/phone-number-type.dto';
 import { Type } from 'class-transformer';
 
 export class GetCompaniesUserResponseDto {
@@ -19,18 +19,20 @@ export class GetCompaniesUserResponseDto {
   email: string;
 
   @ApiProperty()
-  @IsOptional()
+  phoneNumber: string
+
+  @ApiProperty()
   @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
-  phoneNumber: PhoneNumberTypeDto;
+  phoneNumberPrefix: PhoneNumberTypeDto;
 
   @ApiProperty()
   emailVerified: boolean;
 
-  @ApiProperty({ enum: UserRole })
+  @ApiProperty({ enum: UserRole, enumName: 'UserRole' })
   @IsEnum(UserRole)
   role: UserRole;
 
-  @ApiProperty({ enum: UserStatus })
+  @ApiProperty({ enum: UserStatus, enumName: 'UserStatus' })
   @IsEnum(UserStatus)
   status: UserStatus;
 }

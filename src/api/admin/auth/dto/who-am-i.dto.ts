@@ -1,7 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AdminRole } from '../../../enums/admin-role.enum';
-import { AdminStatus } from '../../../enums/admin-status.enum';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+import { AdminRole } from '../../../enums/admin/admin-role.enum';
+import { AdminStatus } from '../../../enums/admin/admin-status.enum';
+import { PhoneNumberTypeDto } from '../../../common/phone/dto/phone-number-type.dto';
+import { IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class WhoAmIDto {
   @ApiProperty()
@@ -17,12 +19,18 @@ export class WhoAmIDto {
   emailVerified: boolean;
 
   @ApiProperty()
-  phoneNumber: PhoneNumberTypeDto;
+  @IsOptional()
+  phoneNumber: string
 
-  @ApiProperty({ type: 'enum', enum: AdminRole })
+  @ApiProperty()
+  @IsOptional()
+  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
+  phoneNumberPrefix: PhoneNumberTypeDto;
+
+  @ApiProperty({ type: 'enum', enum: AdminRole, enumName: 'AdminRole' })
   role: AdminRole;
 
-  @ApiProperty({ type: 'enum', enum: AdminStatus})
+  @ApiProperty({ type: 'enum', enum: AdminStatus, enumName: 'AdminStatus' })
   status: AdminStatus;
 
   @ApiProperty()

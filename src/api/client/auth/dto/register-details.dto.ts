@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+import { IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
+import { PhoneNumberTypeDto } from '../../../common/phone/dto/phone-number-type.dto';
 import { Type } from 'class-transformer';
 
 export class RegisterDetailsDto{
@@ -16,8 +16,15 @@ export class RegisterDetailsDto{
   @IsString()
   lastName: string;
 
+
   @ApiProperty({required: true})
-  @IsOptional()
-  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
-  phoneNumber: PhoneNumberTypeDto;
+  @IsNotEmpty()
+  @IsString()
+  @Length(2, 2)
+  phoneCountryCode: string;
+
+  @ApiProperty({required: true})
+  @IsNotEmpty()
+  @IsString()
+  phoneNumber: string;
 }

@@ -6,16 +6,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { User } from 'src/api/entities/user.entity';
-import { UserStatus } from 'src/api/enums/user-status.enum';
+import { UserStatus } from 'src/api/enums/user/user-status.enum';
 import { DataSource, Repository } from 'typeorm';
 import { GetCompaniesUsersDto } from '../../admin/companies/dto/get-companies-users.dto';
 import { UpdateUserDto } from '../../admin/companies/dto/update-user.dto';
 import { EmailService } from 'src/api/email/email.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { GetCompaniesUsersResponseDto } from '../../admin/companies/dto/get-companies-users-response.dto';
 import { GetCompaniesUserResponseDto } from '../../admin/companies/dto/get-companies-user.response.dto';
 import { MessageResponseDto } from '../../responses/message-response.dto';
+import { PhoneNumberUtil } from '../../common/phone/phone-number.util';
 
 @Injectable()
 export class UserRepository extends Repository<User> {
@@ -23,6 +24,7 @@ export class UserRepository extends Repository<User> {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly dataSource: DataSource,
+    private readonly phoneNumberUtil:  PhoneNumberUtil
   ) {
     super(User, dataSource.createEntityManager());
   }
@@ -31,16 +33,12 @@ export class UserRepository extends Repository<User> {
 
   // method to verify email
   private async verifyEmail(
-    userId: string,
     email: string,
     randomPassword?: string,
   ): Promise<boolean> {
-    const jwtPayload = { userId: userId, expireIn: '3600' };
-    const verifyUrl = `${process.env.BASE_URL}admin/auth/email?jwtToken=${encodeURIComponent(this.jwtService.sign(jwtPayload))}`;
-    const emailSent = await this.emailService.authEmail(
+   const emailSent = await this.emailService.authEmail(
       email,
-      verifyUrl,
-      randomPassword || '',
+    randomPassword || '',
     );
     if (!emailSent) {
       throw new HttpException(
@@ -139,12 +137,16 @@ export class UserRepository extends Repository<User> {
         emailVerified,
         role,
         status,
+        phoneCountryCode
       }) => ({
         id: id ?? '/',
         firstName: firstName ?? '/',
         lastName: lastName ?? '/',
         email: email ?? '/',
         phoneNumber: phoneNumber ?? null,
+        phoneNumberPrefix: phoneCountryCode
+          ? this.phoneNumberUtil.getByCode(phoneCountryCode)
+          : null,
         emailVerified: emailVerified,
         role: role,
         status: status,
@@ -187,6 +189,9 @@ export class UserRepository extends Repository<User> {
       id: user.id,
       email: user.email ?? '-',
       phoneNumber: user.phoneNumber ?? null,
+      phoneNumberPrefix: user.phoneCountryCode
+        ? this.phoneNumberUtil.getByCode(user.phoneCountryCode)
+        : null,
       emailVerified: user.emailVerified ?? false,
       role: user.role,
       status: user.status,
@@ -201,7 +206,7 @@ export class UserRepository extends Repository<User> {
   ): Promise<{
     message: string;
   }> {
-    const { firstName, lastName, email, phoneNumber, role } = updateUserDto;
+    const { firstName, lastName, email, phoneNumber, role , phoneCountryCode} = updateUserDto;
 
     const user = await this.findOne({
       where: { id: userId },
@@ -211,11 +216,11 @@ export class UserRepository extends Repository<User> {
       throw new NotFoundException('User with this ID does not exist.');
     }
 
-    if (firstName && user.id != userId) {
+    if (firstName) {
       user.firstName = firstName;
 
     }
-    if (lastName && user.id != userId) {
+    if (lastName) {
       user.lastName = lastName;
 
     }
@@ -232,6 +237,10 @@ export class UserRepository extends Repository<User> {
 
     if (phoneNumber) {
       user.phoneNumber = phoneNumber;
+    }
+
+    if (phoneCountryCode) {
+      user.phoneCountryCode = phoneCountryCode;
     }
 
     if (role) {
@@ -328,7 +337,7 @@ export class UserRepository extends Repository<User> {
     const hashedPassword = await bcrypt.hash(randomPassword, 10);
     userData.password = hashedPassword;
 
-    await this.verifyEmail(userId, userData.email, hashedPassword);
+    await this.verifyEmail(userData.email, hashedPassword);
 
     return {
       message: 'New password has been sent to email',

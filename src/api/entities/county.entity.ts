@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {  IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"; 
-import { CountyStatus } from "../enums/county-status.enum";
+import { CountyStatus } from "../enums/common/county-status.enum";
 import { State } from "./state.entity";
 
 @Entity('counties')

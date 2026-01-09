@@ -6,5 +6,6 @@ export class CrmObjectController {
   constructor(
     private readonly crmObjectService: CrmObjectService
   ) {
+
   }
 }

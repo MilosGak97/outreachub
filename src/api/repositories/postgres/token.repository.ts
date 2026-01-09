@@ -8,8 +8,8 @@ import { AuthRepository } from 'src/api/client/auth/auth.repository';
 import { RegisterTokenResponseDto } from 'src/api/client/auth/dto/register-token-exist.dto';
 import { Token } from 'src/api/entities/token.entity';
 import { User } from 'src/api/entities/user.entity';
-import { TokenStatus } from 'src/api/enums/token-status.enum';
-import { TokenType } from 'src/api/enums/token-type.enum';
+import { TokenStatus } from 'src/api/enums/token/token-status.enum';
+import { TokenType } from 'src/api/enums/token/token-type.enum';
 import { DataSource, In, Repository } from 'typeorm';
 
 @Injectable()

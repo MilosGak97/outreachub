@@ -1,9 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '../../../enums/user-role.enum';
-import { UserStatus } from '../../../enums/user-status.enum';
+import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
+import { UserRole } from '../../../enums/user/user-role.enum';
+import { UserStatus } from '../../../enums/user/user-status.enum';
 import { IsOptional } from 'class-validator';
-import { PhoneNumberTypeDto } from '../../../common/dto/phone-number-type.dto';
+import { PhoneNumberTypeDto } from '../../../common/phone/dto/phone-number-type.dto';
+import { Type } from 'class-transformer';
 
+@ApiExtraModels(PhoneNumberTypeDto)
 export class WhoAmIDto {
   @ApiProperty()
   id: string;
@@ -21,12 +23,18 @@ export class WhoAmIDto {
   emailVerified: boolean;
 
   @ApiProperty()
-  phoneNumber: PhoneNumberTypeDto;
+  @IsOptional()
+  phoneNumber: string
 
-  @ApiProperty({ type: 'enum', enum: UserRole })
+  @ApiProperty()
+  @IsOptional()
+  @Type((): typeof PhoneNumberTypeDto => PhoneNumberTypeDto)
+  phoneNumberPrefix: PhoneNumberTypeDto;
+
+  @ApiProperty({ type: 'enum', enum: UserRole, enumName: 'UserRole' })
   role: UserRole;
 
-  @ApiProperty({ type: 'enum', enum: UserStatus })
+  @ApiProperty({ type: 'enum', enum: UserStatus, enumName: 'UserStatus' })
   status: UserStatus;
 
   @ApiProperty()
