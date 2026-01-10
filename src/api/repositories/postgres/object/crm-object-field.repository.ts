@@ -141,7 +141,7 @@ export class CrmObjectFieldRepository extends BaseCompanyRepository<CrmObjectFie
         ? (await this.getFormulaContext(dto.objectTypeId)).fieldTypes
         : undefined;
 
-    const { normalizedConfigShape } = validateAndNormalizeFieldConfig({
+    const { normalizedConfigShape, normalizedShape } = validateAndNormalizeFieldConfig({
       fieldType: dto.fieldType,
       shape: dto.shape,
       configShape: dto.configShape,
@@ -157,7 +157,9 @@ export class CrmObjectFieldRepository extends BaseCompanyRepository<CrmObjectFie
       objectType,
     });
 
-    if (dto.shape) {
+    if (normalizedShape !== undefined) {
+      field.shape = normalizedShape;
+    } else if (dto.shape) {
       field.shape = dto.shape;
     }
 

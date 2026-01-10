@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CrmObjectTypeRepository } from '../../../repositories/postgres/object/crm-object-type.repository';
+import { CrmObjectRepository } from '../../../repositories/postgres/object/crm-object.repository';
+import { CrmObjectAssociationRepository } from '../../../repositories/postgres/object/crm-object-association.repository';
+import { CrmAssociationTypeRepository } from '../../../repositories/postgres/object/crm-association-type.repository';
 import { CreateCrmObjectTypeDto } from './dto/create-crm-object-type.dto';
 import { UpdateCrmObjectTypeDto } from './dto/update-crm-object-type.dto';
 import { MessageResponseDto } from '../../../responses/message-response.dto';
@@ -10,7 +13,10 @@ import { GetSingleObjectTypeDto } from './dto/get-single-object.dto';
 @Injectable()
 export class CrmObjectTypeService {
   constructor(
-    private readonly repo: CrmObjectTypeRepository
+    private readonly repo: CrmObjectTypeRepository,
+    private readonly crmObjectRepository: CrmObjectRepository,
+    private readonly crmObjectAssociationRepository: CrmObjectAssociationRepository,
+    private readonly crmAssociationTypeRepository: CrmAssociationTypeRepository,
   ) {}
 
   async getAllObjectTypes(
@@ -43,6 +49,16 @@ export class CrmObjectTypeService {
   }
 
   async deleteObject(id: string): Promise<{ message: string }> {
+    await this.crmObjectAssociationRepository.deleteAssociationsForObjectType(id);
+    const associationTypeIds =
+      await this.crmAssociationTypeRepository.getAssociationTypeIdsByObjectType(id);
+
+    for (const typeId of associationTypeIds) {
+      await this.crmAssociationTypeRepository.deleteAssociationTypeById(typeId);
+    }
+
+    await this.crmObjectRepository.deleteObjectsByType(id);
+
     await this.repo.deleteObjectById(id);
     return { message: `Deleted successfully.` };
   }

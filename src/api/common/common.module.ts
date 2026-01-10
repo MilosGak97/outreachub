@@ -4,12 +4,13 @@ import { CommonService } from './common.service';
 import { PhoneModule } from './phone/phone.module';
 import { AwsModule } from './aws/aws.module';
 import { AwsController } from './aws/aws.controller';
+import { EncryptionModule } from './encryption/encryption.module';
 
 @Global()
 @Module({
   controllers: [CommonController, AwsController],
   providers: [CommonService],
-  imports: [PhoneModule, AwsModule],
+  imports: [PhoneModule, AwsModule, EncryptionModule],
   exports: [PhoneModule, CommonService, AwsModule]
 })
 export class CommonModule {}

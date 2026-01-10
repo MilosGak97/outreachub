@@ -52,7 +52,7 @@ export class ImportDraftFieldRepository extends BaseCompanyRepository<ImportDraf
         ? await this.getFormulaFieldTypes(dto.objectTypeId, companyId)
         : undefined;
 
-    const { normalizedConfigShape } = validateAndNormalizeFieldConfig({
+    const { normalizedConfigShape, normalizedShape } = validateAndNormalizeFieldConfig({
       fieldType: dto.fieldType,
       shape: dto.shape,
       configShape: dto.configShape,
@@ -79,7 +79,7 @@ export class ImportDraftFieldRepository extends BaseCompanyRepository<ImportDraf
       fieldType: dto.fieldType,
       description: dto.description,
       isRequired: dto.isRequired ?? false,
-      shape: dto.shape,
+      shape: normalizedShape ?? dto.shape,
       configShape: normalizedConfigShape,
     });
 

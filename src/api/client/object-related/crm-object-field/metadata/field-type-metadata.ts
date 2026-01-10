@@ -16,6 +16,9 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   [FieldType.MULTI_SELECT]: 'Multi Select',
   [FieldType.CURRENCY]: 'Currency',
   [FieldType.FORMULA]: 'Formula Field',
+  [FieldType.PROTECTED_PHONE]: 'Protected Phone Number',
+  [FieldType.PROTECTED_EMAIL]: 'Protected Email',
+  [FieldType.PROTECTED_ADDRESS]: 'Protected Address',
   [FieldType.ADDRESS]: 'Address',
 };
 
@@ -36,5 +39,8 @@ export const FIELD_TYPE_DESCRIPTIONS: Record<FieldType, string> = {
   [FieldType.MULTI_SELECT]: 'Field allowing selection of multiple options.',
   [FieldType.CURRENCY]: 'Monetary value.',
   [FieldType.FORMULA]: 'Computed field based on formula.',
+  [FieldType.PROTECTED_PHONE]: 'Secure phone stored as a protected value, only masked label is exposed.',
+  [FieldType.PROTECTED_EMAIL]: 'Secure email address stored as protected value.',
+  [FieldType.PROTECTED_ADDRESS]: 'Secure address stored as protected value.',
   [FieldType.ADDRESS]: 'Address',
 };

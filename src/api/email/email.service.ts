@@ -187,4 +187,77 @@ export class EmailService {
     );
   }
 
+  async sendInviteEmail(params: {
+    to: string;
+    inviterName: string;
+    companyName: string;
+    inviteUrl: string;
+    role: string;
+  }) {
+    const { to, inviterName, companyName, inviteUrl, role } = params;
+    const html = `
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 0; margin: 0;">
+        <div style="max-width:600px;margin:auto;background:#fff;border-radius:8px;overflow:hidden">
+          <div style="background:#007bff;color:#fff;padding:20px;text-align:center;">
+            <h1>You're Invited!</h1>
+          </div>
+          <div style="padding:20px;color:#333;">
+            <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> as a <strong>${role}</strong>.</p>
+            <p>Click the button below to accept the invitation and create your account:</p>
+            <p style="text-align:center;margin:30px 0;">
+              <a href="${inviteUrl}" style="background:#007bff;color:#fff;text-decoration:none;padding:15px 30px;border-radius:5px;font-size:16px;">Accept Invitation</a>
+            </p>
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break:break-all;color:#666;">${inviteUrl}</p>
+            <p style="color:#999;font-size:12px;margin-top:30px;">This invitation will expire in 7 days.</p>
+          </div>
+          <div style="background:#f1f1f1;text-align:center;padding:10px;color:#777;font-size:12px;">
+            &copy; ${new Date().getFullYear()} SubRosa Hub. All rights reserved.
+          </div>
+        </div>
+      </body>
+    </html>`;
+
+    return await this.sendEmail(
+      to,
+      `${inviterName} invited you to join ${companyName}`,
+      html,
+      `${inviterName} has invited you to join ${companyName} as a ${role}. Accept the invitation at: ${inviteUrl}`
+    );
+  }
+
+  async sendPasswordResetEmail(to: string, resetUrl: string) {
+    const html = `
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 0; margin: 0;">
+        <div style="max-width:600px;margin:auto;background:#fff;border-radius:8px;overflow:hidden">
+          <div style="background:#007bff;color:#fff;padding:20px;text-align:center;">
+            <h1>Reset Your Password</h1>
+          </div>
+          <div style="padding:20px;color:#333;">
+            <p>We received a request to reset your password. If you didn't make this request, you can safely ignore this email.</p>
+            <p>Click the button below to reset your password:</p>
+            <p style="text-align:center;margin:30px 0;">
+              <a href="${resetUrl}" style="background:#007bff;color:#fff;text-decoration:none;padding:15px 30px;border-radius:5px;font-size:16px;">Reset Password</a>
+            </p>
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break:break-all;color:#666;">${resetUrl}</p>
+            <p style="color:#999;font-size:12px;margin-top:30px;">This link will expire in 1 hour.</p>
+          </div>
+          <div style="background:#f1f1f1;text-align:center;padding:10px;color:#777;font-size:12px;">
+            &copy; ${new Date().getFullYear()} SubRosa Hub. All rights reserved.
+          </div>
+        </div>
+      </body>
+    </html>`;
+
+    return await this.sendEmail(
+      to,
+      'Reset Your Password',
+      html,
+      `Reset your password at: ${resetUrl}. This link will expire in 1 hour.`
+    );
+  }
+
 }

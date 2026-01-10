@@ -92,6 +92,7 @@ export class PropertyListingsSearchDto {
   @ApiPropertyOptional({
     description: 'Filter listings by county from `/common/counties`. Accepts one or more values (e.g. `["Cook County, IL"]`).',
     isArray: true,
+    type: String,
   })
   @IsOptional()
   @IsArray()

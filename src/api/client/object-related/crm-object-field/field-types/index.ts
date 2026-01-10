@@ -13,6 +13,9 @@ import { SelectField } from './fields/select-field';
 import { MultiSelectField } from './fields/multi-select-field';
 import { CurrencyField } from './fields/currency-field';
 import { FormulaField } from './fields/formula-field';
+import { ProtectedPhoneField } from './fields/protected-phone-field';
+import { ProtectedEmailField } from './fields/protected-email-field';
+import { ProtectedAddressField } from './fields/protected-address-field';
 
 
 export const FieldRegistry = {
@@ -30,4 +33,7 @@ export const FieldRegistry = {
   [FieldType.MULTI_SELECT]: MultiSelectField,
   [FieldType.CURRENCY]: CurrencyField,
   [FieldType.FORMULA]: FormulaField,
+  [FieldType.PROTECTED_PHONE]: ProtectedPhoneField,
+  [FieldType.PROTECTED_EMAIL]: ProtectedEmailField,
+  [FieldType.PROTECTED_ADDRESS]: ProtectedAddressField,
 };

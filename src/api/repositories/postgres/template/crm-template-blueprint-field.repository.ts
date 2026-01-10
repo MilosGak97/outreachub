@@ -170,13 +170,17 @@ export class CrmTemplateBlueprintFieldRepository extends Repository<CrmTemplateB
         ? (await this.getFormulaContext(dto.blueprintObjectId)).fieldTypes
         : undefined;
 
+    const fieldMetadata = FieldRegistry[dto.fieldType];
+
     // Validate and normalize field configuration using same logic as CRM object fields
-    const { normalizedConfigShape } = validateAndNormalizeFieldConfig({
+    const { normalizedConfigShape, normalizedShape } = validateAndNormalizeFieldConfig({
       fieldType: dto.fieldType,
       shape: dto.shape,
       configShape: dto.configShape,
       formulaFieldTypes,
     });
+
+    const resolvedShape = normalizedShape ?? dto.shape ?? fieldMetadata?.shape;
 
     const field = this.create({
       blueprintObjectId: dto.blueprintObjectId,
@@ -185,7 +189,7 @@ export class CrmTemplateBlueprintFieldRepository extends Repository<CrmTemplateB
       fieldType: dto.fieldType,
       description: dto.description,
       isRequired: dto.isRequired ?? false,
-      shape: dto.shape,
+      shape: resolvedShape,
       protection: dto.protection,
       displayOrder: dto.displayOrder ?? 0,
     });
@@ -360,7 +364,7 @@ export class CrmTemplateBlueprintFieldRepository extends Repository<CrmTemplateB
           ? formulaContext.fieldTypes
           : undefined;
 
-      const { normalizedConfigShape } = validateAndNormalizeFieldConfig({
+      const { normalizedConfigShape, normalizedShape } = validateAndNormalizeFieldConfig({
         fieldType: field.fieldType,
         shape: field.shape,
         configShape: field.configShape,
@@ -374,7 +378,7 @@ export class CrmTemplateBlueprintFieldRepository extends Repository<CrmTemplateB
         fieldType: field.fieldType,
         description: field.description,
         isRequired: field.isRequired ?? false,
-        shape: field.shape,
+        shape: normalizedShape ?? field.shape,
         protection: field.protection,
         displayOrder: field.displayOrder ?? 0,
       });

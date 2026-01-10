@@ -21,4 +21,7 @@ export enum FieldType {
 
   // Formula-driven
   FORMULA = 'formula',
+  PROTECTED_PHONE = 'protected_phone',
+  PROTECTED_EMAIL = 'protected_email',
+  PROTECTED_ADDRESS = 'protected_address',
 }

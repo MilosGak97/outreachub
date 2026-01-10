@@ -7,8 +7,18 @@ import { CrmObjectAssociationRepository } from '../../../repositories/postgres/o
 import { SharedModule } from '../../multi-tenant-setup/shared-module';
 
 @Module({
-  providers: [CrmObjectAssociationService, CrmObjectAssociationRepository],
+  imports: [
+    SharedModule,
+    TypeOrmModule.forFeature([CrmObjectAssociation]),
+  ],
   controllers: [CrmObjectAssociationController],
-  imports: [SharedModule, TypeOrmModule.forFeature([CrmObjectAssociation])],
+  providers: [
+    CrmObjectAssociationService,
+    CrmObjectAssociationRepository,
+  ],
+  exports: [
+    CrmObjectAssociationService,
+    CrmObjectAssociationRepository,
+  ],
 })
 export class CrmObjectAssociationModule {}

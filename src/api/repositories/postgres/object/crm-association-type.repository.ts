@@ -314,6 +314,23 @@ export class CrmAssociationTypeRepository extends BaseCompanyRepository<CrmAssoc
     await this.remove(associationType);
   }
 
+  async getAssociationTypeIdsByObjectType(objectTypeId: string): Promise<string[]> {
+    const companyId = this.companyContext.currentCompanyId;
+
+    const rows = await this.createQueryBuilder('associationType')
+      .select('associationType.id', 'id')
+      .leftJoin('associationType.sourceObjectType', 'sourceObjectType')
+      .leftJoin('associationType.targetObjectType', 'targetObjectType')
+      .where('associationType.companyId = :companyId', { companyId })
+      .andWhere(
+        '(sourceObjectType.id = :objectTypeId OR targetObjectType.id = :objectTypeId)',
+        { objectTypeId },
+      )
+      .getRawMany();
+
+    return rows.map((row) => row.id);
+  }
+
   private toDto(record: CrmAssociationType): AssociationTypeDto {
     return {
       id: record.id,

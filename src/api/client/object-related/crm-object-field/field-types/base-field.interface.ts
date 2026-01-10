@@ -22,4 +22,7 @@ export interface FieldMetadata {
   actions?: FieldAction[]; // UI-based actions: CALL, EMAIL, etc.
   isFormulaCapable?: boolean;
   isUsableInFormula?: boolean;
+  isProtected?: boolean;
+  storageType?: string;
+  protectedValueType?: string;
 }

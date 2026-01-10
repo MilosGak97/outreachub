@@ -7,10 +7,7 @@ export const PhoneField: FieldMetadata = {
   label: 'Phone Number',
   description: 'Structured phone input for calling/SMS',
   shape: {
-    //name: { type: 'string' },
     code: { type: 'string' },
-    //flag: { type: 'string' },
-    //prefix: { type: 'string' },
     number: { type: 'string' },
   },
   actions: [FieldAction.CALL, FieldAction.TEXT],

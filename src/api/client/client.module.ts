@@ -4,6 +4,7 @@ import { ClsModule } from 'nestjs-cls';
 import { DataSource } from 'typeorm';
 
 import { AuthModule } from './auth/auth.module';
+import { Auth2Module } from './auth2/auth2.module';
 import { CommonModule } from '../common/common.module';
 import { ObjectRelatedModule } from './object-related/object-related.module';
 
@@ -54,6 +55,7 @@ const repositoryProviders = COMPANY_SCOPED_ENTITIES.map(({ entity, customReposit
     }),
     TypeOrmModule.forFeature(COMPANY_SCOPED_ENTITIES.map(e => e.entity)),
     AuthModule,
+    Auth2Module,
     CommonModule,
     ObjectRelatedModule,
   ],
