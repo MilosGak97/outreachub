@@ -49,6 +49,7 @@ export class User {
   email: string;
 
 
+
   @ApiProperty({ required: false })
   @Column({ name: 'phone_country_code', type: 'varchar', length: 2, nullable: true })
   phoneCountryCode?: string;
@@ -71,6 +72,24 @@ export class User {
   @IsOptional()
   @Column({ nullable: true })
   passcode?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  @Column({ name: 'verification_token', nullable: true })
+  verificationToken?: string;
+
+  @ApiProperty({ required: false })
+  @IsDate()
+  @IsOptional()
+  @Column({ name: 'verification_token_expires_at', nullable: true })
+  verificationTokenExpiresAt?: Date;
+
+  @ApiProperty({ required: false })
+  @IsDate()
+  @IsOptional()
+  @Column({ name: 'passcode_expires_at', nullable: true })
+  passcodeExpiresAt?: Date;
 
   @ApiProperty({ required: true })
   @IsBoolean()

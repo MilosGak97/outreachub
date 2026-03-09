@@ -23,7 +23,7 @@ This module handles CRUD for CRM object fields that belong to an object type. Th
   - `actions?: FieldAction[]` (e.g., CALL/EMAIL/TEXT/OPEN_LINK) – **used for UI hints only; not stored in the entity**.
   - `isFormulaCapable?: boolean` – whether a field type can generate formula values (e.g., `formula` field itself).
   - `isUsableInFormula?: boolean` – whether fields of this type can be referenced inside a formula tree.
-- The `GET /crm-object-field/:type` endpoint surfaces `label`, `description`, and when defined, the `shape`/`configShape` schemas so the frontend can build field editors. Actions and formula flags remain internal.
+- The `GET /crm-object-field/definition` endpoint returns a map of all type definitions; `GET /crm-object-field/definition?type=<fieldType>` returns a map with a single entry. Each includes `label`, `description`, and when defined, the `shape`/`configShape` schemas so the frontend can build field editors. Actions and formula flags remain internal.
 
 ## Persisted vs. metadata summary
 - **Persisted per field instance** (`crm-object-fields` table): `name`, `description`, `fieldType`, `apiName`, `isRequired`, `shape`, `configShape`, plus company/objectType relations.

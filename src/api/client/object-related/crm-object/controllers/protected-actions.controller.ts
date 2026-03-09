@@ -1,13 +1,13 @@
 import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { UserAuthGuard } from '../../../auth/user-auth.guard';
+import { AuthGuard } from '../../../auth/guards';
 import { ProtectedActionService, CallResult, SmsResult, EmailResult } from '../services/protected-action.service';
 import { InitiateCallDto } from '../dto/requests/initiate-call.dto';
 import { SendSmsDto } from '../dto/requests/send-sms.dto';
 import { SendEmailDto } from '../dto/requests/send-email.dto';
 
 @Controller('client/protected-actions')
-@UseGuards(UserAuthGuard)
+@UseGuards(AuthGuard)
 @ApiTags('Protected Actions')
 @ApiBearerAuth()
 export class ProtectedActionsController {

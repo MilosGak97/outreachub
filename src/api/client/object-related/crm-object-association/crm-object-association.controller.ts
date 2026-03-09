@@ -18,7 +18,7 @@ import {
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { CrmObjectAssociationService } from './crm-object-association.service';
-import { UserAuthGuard } from '../../auth/user-auth.guard';
+import { AuthGuard } from '../../auth/guards';
 import { CreateCrmObjectAssociationDto } from './dto/requests/create-association.dto';
 import { GetAssociationsQueryDto } from './dto/requests/get-associations-query.dto';
 import {
@@ -51,7 +51,7 @@ export class CrmObjectAssociationController {
   @ApiBadRequestResponse({
     description: 'Validation error, cardinality violation, or invalid object types',
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Post()
   async createAssociation(
     @Body() dto: CreateCrmObjectAssociationDto,
@@ -64,7 +64,7 @@ export class CrmObjectAssociationController {
     description: 'Bulk operation results',
     type: BulkCreateAssociationsResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Post('bulk')
   async bulkCreate(
     @Body() dto: BulkCreateAssociationsDto,
@@ -79,7 +79,7 @@ export class CrmObjectAssociationController {
     description: 'Paginated list of associations',
     type: AssociationListResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get()
   async getAssociations(
     @Query() dto: GetAssociationsQueryDto,
@@ -93,7 +93,7 @@ export class CrmObjectAssociationController {
     type: CrmObjectAssociationResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Association not found' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get(':id')
   async getAssociation(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -108,7 +108,7 @@ export class CrmObjectAssociationController {
     description: 'Bulk operation results',
     type: BulkDeleteAssociationsResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Delete('bulk')
   async bulkDelete(
     @Body() dto: BulkDeleteAssociationsDto,
@@ -122,7 +122,7 @@ export class CrmObjectAssociationController {
     type: MessageResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Association not found' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Delete(':id')
   async deleteAssociation(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

@@ -6,6 +6,7 @@ import { CommonModule } from '../common/common.module';
 import { PropertiesModule } from './properties/properties.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { TemplatesModule } from './templates/templates.module';
+import { AdminFilterPresetModule } from './filter-preset/admin-filter-preset.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { TemplatesModule } from './templates/templates.module';
     AuthModule,
     CompaniesModule,
     CommonModule,
+    AdminFilterPresetModule,
     PropertiesModule,
     ScraperModule,
     TemplatesModule,

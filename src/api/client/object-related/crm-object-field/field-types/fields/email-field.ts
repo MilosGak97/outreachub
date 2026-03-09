@@ -7,7 +7,7 @@ export const EmailField: FieldMetadata = {
   label: 'Email Address',
   description: 'Used for email campaigns and user contact',
   shape: {
-    email: { type: 'string' },
+    value: { type: 'string' },
   },
   actions: [FieldAction.EMAIL],
   isFormulaCapable: false,

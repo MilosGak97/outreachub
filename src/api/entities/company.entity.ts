@@ -66,11 +66,11 @@ export class Company {
   @Column({ name: 'zip_code', nullable: true })
   zipCode?: string;
 
-  @ApiProperty({ required: true })
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @Column({ nullable: false })
-  website: string;
+  @Column({ nullable: true })
+  website?: string;
 
 
   @ApiProperty({ required: false })

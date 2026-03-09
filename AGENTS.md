@@ -167,3 +167,23 @@ If uncertain:
 2) Match existing style
 3) Keep changes minimal
 4) Only ask if truly blocking; otherwise pick a sane default and proceed
+
+
+**When executing tasks:**
+1. Read the spec (`03-SPEC.md`) before starting each task
+2. Check existing patterns in codebase for consistency
+3. Run `npm run build` after each task to catch errors early
+4. Run relevant tests before moving to next task
+5. Do NOT skip tests - they are part of the task
+
+**Key files to reference:**
+- Entity patterns: `src/api/entities/`
+- Repository patterns: `src/api/repositories/postgres/`
+- DTO patterns: `src/api/client/object-related/crm-object/dto/`
+- Service patterns: `src/api/client/object-related/crm-object/crm-object.service.ts`
+- Controller patterns: `src/api/client/object-related/crm-object/crm-object.controller.ts`
+- Module patterns: `src/api/client/object-related/object-related.module.ts`
+
+**Decision: Where to put the module:**
+- If presets are used by BOTH admin and client surfaces → put in `src/api/common/`
+- If surfaces need separate endpoints → create modules in both `admin` and `client` that share the common service/repo

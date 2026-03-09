@@ -19,6 +19,10 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
 
+    "migration:generate": "node scripts/migration-generate.js",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/data-source.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/data-source.ts",
+
     "docs:generate": "npx ts-node scripts/generate-openapi.ts",
     "docs:export": "mkdir -p docs && curl -s http://localhost:3005/admin/api-json -o docs/openapi.admin.json && curl -s http://localhost:3005/client/api-json -o docs/openapi.client.json && echo \"OpenAPI specs exported to docs/\"",
     "docs:build:admin": "npx @redocly/cli build-docs docs/openapi.admin.json -o docs/admin-api.html --config redocly.yaml",
@@ -106,6 +110,9 @@
       "ts"
     ],
     "rootDir": "src",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    },
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"

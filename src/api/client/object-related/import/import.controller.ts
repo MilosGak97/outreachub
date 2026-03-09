@@ -12,14 +12,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserAuthGuard } from '../../auth/user-auth.guard';
+import { AuthGuard } from '../../auth/guards';
 import { ImportService } from './import.service';
 import { ImportHealthDto } from './dto/import-health.dto';
 import { CreateImportFileDto } from './dto/create-import-file.dto';
 import { ImportFileDto } from './dto/import-file.dto';
 import { CreateImportSessionDto } from './dto/create-import-session.dto';
 import { ImportSessionDto } from './dto/import-session.dto';
-import { GetUser } from '../../auth/decorators/get-user.decorator';
+import { CurrentUser } from '../../auth/decorators';
 import { User } from '../../../entities/user.entity';
 import { CreateImportDraftFieldDto } from './dto/create-import-draft-field.dto';
 import { ImportDraftFieldDto } from './dto/import-draft-field.dto';
@@ -44,7 +44,7 @@ import { ImportRowsParseResponseDto } from './dto/import-rows-parse-response.dto
 
 @ApiTags('Object Import')
 @Controller('object-import')
-@UseGuards(UserAuthGuard)
+@UseGuards(AuthGuard)
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
@@ -60,7 +60,7 @@ export class ImportController {
   @Post('files/upload-url')
   async createUploadUrl(
     @Body() dto: CreateImportPresignDto,
-    @GetUser() user: User,
+    @CurrentUser() user: User,
   ): Promise<ImportPresignResponseDto> {
     return this.importService.createUploadUrl(dto, user?.company?.id);
   }
@@ -77,7 +77,7 @@ export class ImportController {
   @Post('sessions')
   async createSession(
     @Body() dto: CreateImportSessionDto,
-    @GetUser() user: User,
+    @CurrentUser() user: User,
   ): Promise<ImportSessionDto> {
     return this.importService.createSession(dto, user?.id);
   }
@@ -87,7 +87,7 @@ export class ImportController {
   @Get('association-types')
   async getAssociationTypesForObjectPair(
     @Query() query: ImportAssociationTypesQueryDto,
-    @GetUser() user: User,
+    @CurrentUser() user: User,
   ): Promise<AssociationTypeDto[]> {
     return this.importService.getAssociationTypesForObjectPair(query, user?.company?.id);
   }

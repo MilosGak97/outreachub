@@ -7,6 +7,7 @@ import { DatetimeField } from './fields/datetime-field';
 import { JsonField } from './fields/json-field';
 import { PhoneField } from './fields/phone-field';
 import { EmailField } from './fields/email-field';
+import { AddressField } from './fields/address-field';
 import { UrlField } from './fields/url-field';
 import { TextareaField } from './fields/textarea-field';
 import { SelectField } from './fields/select-field';
@@ -27,6 +28,7 @@ export const FieldRegistry = {
   [FieldType.JSON]: JsonField,
   [FieldType.PHONE]: PhoneField,
   [FieldType.EMAIL]: EmailField,
+  [FieldType.ADDRESS]: AddressField,
   [FieldType.URL]: UrlField,
   [FieldType.TEXTAREA]: TextareaField,
   [FieldType.SELECT]: SelectField,

@@ -14,7 +14,6 @@ import { CompanyStatus } from 'src/api/enums/user/company-status.enum';
 import { GetCompaniesResponseDto } from '../../admin/companies/dto/get-companies-response.dto';
 import { SingleCompanyResponseDto } from '../../admin/companies/dto/single-company-response';
 import { MessageResponseDto } from '../../responses/message-response.dto';
-import { RegisterCompanyDto } from '../../client/auth/dto/register-company.dto';
 import { User } from '../../entities/user.entity';
 import { PhoneNumberUtil } from '../../common/phone/phone-number.util';
 
@@ -26,17 +25,6 @@ export class CompanyRepository extends Repository<Company> {
               ) {
     super(Company, dataSource.createEntityManager());
   }
-
-  async registerCompany(registerCompanyDto: RegisterCompanyDto, user: User): Promise<Company> {
-    const company = new Company();
-    const { name, website } = registerCompanyDto;
-    company.name = name;
-    company.website = website;
-    company.users = [user];
-    return this.save(company);
-  }
-
-
 
   // method to list all companies
   async getCompanies(

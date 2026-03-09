@@ -307,13 +307,14 @@ export class CrmObjectFieldRepository extends BaseCompanyRepository<CrmObjectFie
       const [records, totalRecords] = await query.getManyAndCount();
 
       const result: ObjectFieldDto[] = records.map(
-        ({ id, name, apiName, description, isRequired, fieldType  }) => ({
+        ({ id, name, apiName, description, isRequired, fieldType, configShape  }) => ({
           id:    id ?? '/',
           name:  name ?? '/',
           apiName: apiName ?? '/',
           description: description ?? undefined,
           isRequired: isRequired ?? false,
-          fieldType: fieldType
+          fieldType: fieldType,
+          configShape: configShape ?? undefined,
         }),
       );
 

@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseEnumPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -12,19 +11,25 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CrmObjectFieldService } from './crm-object-field.service';
-import { UserAuthGuard } from '../../auth/user-auth.guard';
+import { AuthGuard } from '../../auth/guards';
 import { CreateCrmObjectFieldDto } from './dto/create-crm-object-field.dto';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { FieldRegistry } from './field-types';
 import { FieldType } from './field-types/field-type.enum';
 import { UpdateCrmObjectFieldDto } from './dto/update-crm-object-field.dto';
 import { CrmObjectField } from '../../../entities/object/crm-object-field.entity';
 import { MessageResponseDto } from '../../../responses/message-response.dto';
-import { FieldTypeListResponseDto } from '../crm-object-type/dto/field-type-list-response.dto';
 import { FieldTypeDefinitionDto } from '../crm-object-type/dto/field-type-definition.dto';
 import { FIELD_TYPE_LABELS, FIELD_TYPE_DESCRIPTIONS } from './metadata/field-type-metadata';
 import { GetAllQueryDto } from '../crm-object-type/dto/get-all-query.dto';
 import { GetAllFieldsResponseDto } from './dto/get-all-fields-response.dto';
+import { GetFieldTypeDefinitionDto } from './dto/get-field-type-definition.dto';
 import { NormalizeFormulaDto } from './dto/normalize-formula.dto';
 import { UpdateFormulaConfigDto } from './dto/update-formula-config.dto';
 import { NormalizeFormulaResponseDto } from './dto/normalize-formula-response.dto';
@@ -39,6 +44,7 @@ import { FormulaCategoryResponseDto } from './dto/formula-category-response.dto'
 
 
 @ApiTags('Crm Object Field')
+@ApiExtraModels(FieldTypeDefinitionDto)
 @Controller('crm-object-field')
 export class CrmObjectFieldController {
   constructor(
@@ -50,7 +56,7 @@ export class CrmObjectFieldController {
 
   @ApiOperation({ summary: 'Create crm object field' })
   @ApiOkResponse({ description: 'Returns just created object field', type: CrmObjectField })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Post()
   async createField(@Body() dto: CreateCrmObjectFieldDto): Promise<CrmObjectField> {
     return this.service.createField(dto);
@@ -61,7 +67,7 @@ export class CrmObjectFieldController {
     description: 'Returns normalized formula tree/config with validation status',
     type: NormalizeFormulaResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Post('formula/normalize')
   async normalizeFormula(@Body() dto: NormalizeFormulaDto): Promise<NormalizeFormulaResponseDto> {
     return this.service.normalizeFormula(dto);
@@ -104,7 +110,7 @@ export class CrmObjectFieldController {
     description: 'Returns formula-usable fields and primitive type hints (apiName -> type)',
     type: GetFormulaContextResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get('formula/context/:objectTypeId')
   getFormulaContext(
     @Param('objectTypeId', new ParseUUIDPipe({ version: '4' }))
@@ -115,7 +121,7 @@ export class CrmObjectFieldController {
 
   @ApiOperation({summary: 'Check api_name availability'})
   @ApiOkResponse({ description: 'Returns true if api name is available', type: Boolean })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get('api-name/:value')
   async checkApiNameAvailability(@Param('value') value: string): Promise<boolean> {
     return this.service.checkApiName(value);
@@ -124,7 +130,7 @@ export class CrmObjectFieldController {
 
   @ApiOperation({ summary: 'Update CRM object field (name, description, or isRequired)' })
   @ApiOkResponse({ description: 'Returns successful message about updating object field', type: MessageResponseDto })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Patch(':id')
   async updateField(
     @Param('id') id: string,
@@ -135,7 +141,7 @@ export class CrmObjectFieldController {
 
   @ApiOperation({ summary: 'Update formula config for a formula field' })
   @ApiOkResponse({ description: 'Returns updated field', type: CrmObjectField })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Patch(':id/formula')
   async updateFormulaConfig(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -146,47 +152,61 @@ export class CrmObjectFieldController {
 
   @ApiOperation({ summary: 'Delete CRM object field by ID' })
   @ApiOkResponse({ description: 'Returns successful message about deleting object field', type: MessageResponseDto })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Delete(':id')
   async deleteField(@Param('id') id: string): Promise<MessageResponseDto> {
     return this.service.deleteField(id);
   }
 
 
-  @ApiOperation({ summary: 'Get Field Types' })
+  @ApiOperation({ summary: 'Get Field Types Definition(s)' })
   @ApiOkResponse({
-    description: 'Returns an array of supported CRM field types',
-    type: FieldTypeListResponseDto,
+    description: 'Returns a map of field type definitions keyed by field type.',
+    schema: {
+      type: 'object',
+      additionalProperties: { $ref: getSchemaPath(FieldTypeDefinitionDto) },
+    },
   })
-  @Get()
-  getFieldTypes(): Promise<FieldTypeListResponseDto> {
-    return Promise.resolve({
-      types: Object.keys(FieldRegistry) as FieldType[],
-    });
+  @Get('definition')
+  async getFieldTypeDefinitions(
+    @Query() dto?: GetFieldTypeDefinitionDto,
+  ): Promise<Record<string, FieldTypeDefinitionDto>> {
+    if (!dto?.type) {
+      return this.buildFieldTypeDefinitionMap();
+    }
+
+    return {
+      [dto.type]: this.buildFieldTypeDefinition(dto.type),
+    };
   }
 
-  @ApiOperation({ summary: 'Get Field Types Definiton' })
-  @ApiOkResponse({ type: FieldTypeDefinitionDto })
-  @Get(':type')
-  async getFieldTypeByEnum(
-    @Param('type', new ParseEnumPipe(FieldType)) type: FieldType
-  ): Promise<FieldTypeDefinitionDto> {
+  private buildFieldTypeDefinitionMap(): Record<string, FieldTypeDefinitionDto> {
+    return Object.values(FieldType).reduce<Record<string, FieldTypeDefinitionDto>>(
+      (acc, fieldType) => {
+        acc[fieldType] = this.buildFieldTypeDefinition(fieldType);
+        return acc;
+      },
+      {},
+    );
+  }
+
+  private buildFieldTypeDefinition(type: FieldType): FieldTypeDefinitionDto {
     const meta = FieldRegistry[type];
     return {
       type,
       label: FIELD_TYPE_LABELS[type],
       description: FIELD_TYPE_DESCRIPTIONS[type],
-    ...(meta?.shape ? { shape: meta.shape } : {}),
-    ...(meta?.configShape ? { configShape: meta.configShape } : {}),
-    ...(meta?.isFormulaCapable !== undefined ? { isFormulaCapable: meta.isFormulaCapable } : {}),
-    ...(meta?.isUsableInFormula !== undefined ? { isUsableInFormula: meta.isUsableInFormula } : {}),
+      ...(meta?.shape ? { shape: meta.shape } : {}),
+      ...(meta?.configShape ? { configShape: meta.configShape } : {}),
+      ...(meta?.isFormulaCapable !== undefined ? { isFormulaCapable: meta.isFormulaCapable } : {}),
+      ...(meta?.isUsableInFormula !== undefined ? { isUsableInFormula: meta.isUsableInFormula } : {}),
     };
   }
 
 
   @ApiOperation({ summary: 'Get all fields for a CRM object type' })
   @ApiOkResponse({ description: 'Returns all fields belonging to the specified CRM object type', type: GetAllFieldsResponseDto })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get(':id/fields')
   async getFieldsByObjectType(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

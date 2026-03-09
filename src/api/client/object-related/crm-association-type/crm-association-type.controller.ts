@@ -11,10 +11,10 @@ import {
 } from '@nestjs/common';
 import { CrmAssociationTypeService } from './crm-association-type.service';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserAuthGuard } from '../../auth/user-auth.guard';
+import { AuthGuard } from '../../auth/guards';
 import { GetAllAssociationTypesResponseDto } from './dto/get-all-association-types-response.dto';
 import { GetAllAssociationTypesQueryDto } from './dto/get-all-association-types-query.dto';
-import { GetUser } from '../../auth/decorators/get-user.decorator';
+import { CurrentUser } from '../../auth/decorators';
 import { User } from '../../../entities/user.entity';
 import { CreateCrmAssociationTypeDto } from './dto/create-crm-association-type.dto';
 import { GetSingleAssociationTypeDto } from './dto/get-single-association-type.dto';
@@ -34,18 +34,18 @@ export class CrmAssociationTypeController {
     description: 'Paged list of association types scoped to the caller company',
     type: GetAllAssociationTypesResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get()
   async getAllAssociationTypes(
     @Query() dto: GetAllAssociationTypesQueryDto,
-    @GetUser() user: User,
+    @CurrentUser() user: User,
   ): Promise<GetAllAssociationTypesResponseDto> {
     return this.crmAssociationTypeService.getAllAssociationTypes(dto, user.company.id);
   }
 
   @ApiOperation({ summary: 'Create association type' })
   @ApiOkResponse({ description: 'Returns the new association type id', type: String })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Post()
   async createAssociationType(
     @Body() dto: CreateCrmAssociationTypeDto,
@@ -55,7 +55,7 @@ export class CrmAssociationTypeController {
 
   @ApiOperation({ summary: 'Get single association type' })
   @ApiOkResponse({ type: GetSingleAssociationTypeDto })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get(':id')
   async getSingleAssociationType(@Param('id') id: string): Promise<GetSingleAssociationTypeDto> {
     return this.crmAssociationTypeService.getSingleAssociationType(id);
@@ -63,7 +63,7 @@ export class CrmAssociationTypeController {
 
   @ApiOperation({ summary: 'Check api_name availability' })
   @ApiOkResponse({ description: 'Returns true if api name is available', type: Boolean })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get('api-name/:value')
   async checkApiNameAvailability(@Param('value') value: string): Promise<boolean> {
     return this.crmAssociationTypeService.checkApiName(value);
@@ -71,7 +71,7 @@ export class CrmAssociationTypeController {
 
   @ApiOperation({ summary: 'Update association type' })
   @ApiOkResponse({ type: MessageResponseDto })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Patch(':id')
   async updateAssociationType(
     @Param('id') id: string,
@@ -82,7 +82,7 @@ export class CrmAssociationTypeController {
 
   @ApiOperation({ summary: 'Delete association type (blocked if associations exist)' })
   @ApiOkResponse({ type: MessageResponseDto })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Delete(':id')
   async deleteAssociationType(@Param('id') id: string): Promise<MessageResponseDto> {
     return this.crmAssociationTypeService.deleteAssociationType(id);

@@ -21,7 +21,7 @@ import {
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { CrmObjectService } from './crm-object.service';
-import { UserAuthGuard } from '../../auth/user-auth.guard';
+import { AuthGuard } from '../../auth/guards';
 import { CreateCrmObjectDto } from './dto/requests/create-crm-object.dto';
 import { UpdateCrmObjectDto } from './dto/requests/update-crm-object.dto';
 import { GetAllObjectsQueryDto } from './dto/requests/get-all-objects-query.dto';
@@ -57,7 +57,7 @@ export class CrmObjectController {
     type: CrmObjectResponseDto,
   })
   @ApiBadRequestResponse({ description: 'Validation error' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Post()
   async createObject(@Body() dto: CreateCrmObjectDto): Promise<CrmObjectResponseDto> {
     return this.crmObjectService.createObject(dto);
@@ -68,7 +68,7 @@ export class CrmObjectController {
     description: 'Bulk operation results',
     type: BulkCreateResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Post('bulk')
   async bulkCreate(@Body() dto: BulkCreateObjectsDto): Promise<BulkCreateResponseDto> {
     return this.crmObjectService.bulkCreate(dto);
@@ -81,7 +81,7 @@ export class CrmObjectController {
     description: 'Paginated list of objects',
     type: CrmObjectListResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get()
   async getAllObjects(@Query() dto: GetAllObjectsQueryDto): Promise<CrmObjectListResponseDto> {
     return this.crmObjectService.getAllObjects(dto);
@@ -92,7 +92,7 @@ export class CrmObjectController {
     description: 'Search results',
     type: CrmObjectListResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('search')
   async searchObjects(@Body() dto: SearchObjectsDto): Promise<CrmObjectListResponseDto> {
@@ -105,7 +105,7 @@ export class CrmObjectController {
     type: CrmObjectResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Object not found' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get(':id')
   async getObject(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -119,7 +119,7 @@ export class CrmObjectController {
     type: CrmObjectFullResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Object not found' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get(':id/full')
   async getObjectFull(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -134,7 +134,7 @@ export class CrmObjectController {
     description: 'Bulk operation results',
     type: BulkUpdateResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Patch('bulk')
   async bulkUpdate(@Body() dto: BulkUpdateObjectsDto): Promise<BulkUpdateResponseDto> {
     return this.crmObjectService.bulkUpdate(dto);
@@ -147,7 +147,7 @@ export class CrmObjectController {
   })
   @ApiNotFoundResponse({ description: 'Object not found' })
   @ApiBadRequestResponse({ description: 'Validation error' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Patch(':id')
   async updateObject(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -163,7 +163,7 @@ export class CrmObjectController {
   })
   @ApiNotFoundResponse({ description: 'Object not found' })
   @ApiBadRequestResponse({ description: 'Validation error' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Patch(':id/field/:apiName')
   async updateSingleField(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -181,7 +181,7 @@ export class CrmObjectController {
     type: ObjectAssociationsResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Object not found' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get(':id/associations')
   async getObjectAssociations(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -195,7 +195,7 @@ export class CrmObjectController {
     type: ObjectAssociationsResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Object not found' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Get(':id/associations/:typeId')
   async getObjectAssociationsByType(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -211,7 +211,7 @@ export class CrmObjectController {
     description: 'Bulk operation results',
     type: BulkDeleteResponseDto,
   })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Delete('bulk')
   async bulkDelete(@Body() dto: BulkDeleteObjectsDto): Promise<BulkDeleteResponseDto> {
     return this.crmObjectService.bulkDelete(dto);
@@ -223,7 +223,7 @@ export class CrmObjectController {
     type: MessageResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Object not found' })
-  @UseGuards(UserAuthGuard)
+  @UseGuards(AuthGuard)
   @Delete(':id')
   async deleteObject(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

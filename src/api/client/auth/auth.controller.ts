@@ -1,261 +1,352 @@
 import {
-  BadRequestException,
-  Body,
   Controller,
-  Delete,
-  Get,
-  NotFoundException,
-  Param,
-  Patch,
   Post,
+  Get,
+  Patch,
+  Body,
   Req,
   Res,
   UseGuards,
+  HttpCode,
+  HttpStatus,
+  HttpException,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { RegisterDto } from './dto/register.dto';
-import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
-import { MessageResponseDto } from 'src/api/responses/message-response.dto';
-import { User } from 'src/api/entities/user.entity';
-import { SetPasswordDto } from './dto/set-password.dto';
-import { GetUser } from './decorators/get-user.decorator';
-import { SignInDto } from './dto/sign-in.dto';
-import { UserAuthGuard } from './user-auth.guard';
-import { PasscodeDto } from './dto/passcode-dto';
-import { WhoAmIDto } from './dto/who-am-i.dto';
-import { RegisterDetailsDto } from './dto/register-details.dto';
-import { RegisterCompanyDto } from './dto/register-company.dto';
-import { EmailDto } from './dto/email-dto';
+import { AuthService } from './services/auth.service';
+import { TokenService } from './services/token.service';
+import { AuthGuard, CompanyRequiredGuard, EmailVerifiedGuard } from './guards';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { User } from '../../entities/user.entity';
+import { AuthErrorCode } from '../../enums/auth/auth-error-code.enum';
 import {
-  COOKIE_CONFIG,
-  COOKIE_NAMES,
-  TOKEN_EXPIRATION_MS,
+  RegisterDto,
+  LoginDto,
+  VerifyEmailDto,
+  UpdateCompanyProfileDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  ChangePasswordDto,
+  VerifyResetPasswordDto,
+} from './dto/requests';
+import {
+  CompanyResponseDto,
+  LoginResponseDto,
+  MessageResponseDto,
+  RefreshResponseDto,
+  ResendVerificationResponseDto,
+  VerificationStatusResponseDto,
+  TokenPairResponseDto,
+  UserResponseDto,
+  VerificationTokenResponseDto,
+  ResetPasswordStatusResponseDto,
+  ResetPasswordTokenResponseDto,
+  ResendResetPasswordResponseDto,
+  VerifyResetPasswordResponseDto,
+  ResetPasswordResponseDto,
+} from './dto/responses';
+import {
+  AUTH_COOKIE_NAMES,
+  AUTH_COOKIE_CONFIG,
+  AUTH_TOKEN_EXPIRY,
 } from './constants/auth.constants';
+import { ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Auth')
 @Controller('client/auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly tokenService: TokenService,
+  ) {}
 
-  @ApiOperation({ summary: 'Sign In endpoint' })
-  @ApiOkResponse({ type: MessageResponseDto })
-  @Post()
-  async signIn(
-    @Body() signInDto: SignInDto,
-    @Res() res: Response,
-  ): Promise<Response<MessageResponseDto>> {
-    const { accessToken, refreshToken } =
-      await this.authService.signIn(signInDto);
-    res.cookie(COOKIE_NAMES.ACCESS_TOKEN, accessToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.ACCESS_TOKEN,
-    });
+  // ==================== Authentication ====================
 
-    res.cookie(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.REFRESH_TOKEN,
-    });
-
-    return res.json({
-      message: 'Signed in successfully',
-    });
+  @Post('register')
+  @ApiOkResponse({ type: VerificationTokenResponseDto })
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
   }
 
+  @Post('login')
+  @ApiOkResponse({ type: LoginResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(dto);
+    if (result.accessToken && result.refreshToken) {
+      this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    }
+    return result;
+  }
 
-  @ApiOperation({ summary: 'Logout endpoint' })
+  @Post('logout')
   @ApiOkResponse({ type: MessageResponseDto })
-  @UseGuards(UserAuthGuard)
-  @Delete()
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
   async logout(
     @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<Response<MessageResponseDto>> {
-    const token = req.cookies[COOKIE_NAMES.ACCESS_TOKEN];
-
-    const removeTokens = await this.authService.removeTokens(token);
-
-    if (!removeTokens) {
-      throw new BadRequestException('Tokens are not removed from database');
-    }
-    res.clearCookie(COOKIE_NAMES.REFRESH_TOKEN, COOKIE_CONFIG);
-    res.clearCookie(COOKIE_NAMES.ACCESS_TOKEN, COOKIE_CONFIG);
-
-    return res.json({
-      message: 'Logged out successfully',
-    });
-  }
-
-  @ApiOperation({ summary: 'Sign up with email only' })
-  @ApiOkResponse({ type: MessageResponseDto })
-  @Post('register')
-  async register(
-    @Body() registerDto: RegisterDto,
-    @Res() res: Response,
-  ): Promise<Response<MessageResponseDto>> {
-    const { accessToken, refreshToken } =
-      await this.authService.register(registerDto);
-
-    if (!accessToken) {
-      throw new BadRequestException('User creation failed');
-    }
-
-    res.cookie(COOKIE_NAMES.ACCESS_TOKEN, accessToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.ACCESS_TOKEN,
-    });
-
-    res.cookie(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.REFRESH_TOKEN,
-    });
-
-    return res.json({ message: 'User is created and signed in' });
-  }
-
-  @ApiOperation({ summary: 'Form after password is set up' })
-  @ApiOkResponse({ type: MessageResponseDto })
-  @UseGuards(UserAuthGuard)
-  @Patch('register/details')
-  async registerDetails(@Body() registerDetailsDto: RegisterDetailsDto, @GetUser() user: User) {
-    return this.authService.registerDetails(registerDetailsDto, user);
-  }
-
-  @ApiOperation({ summary:  'Form if companyId is empty'})
-  @ApiOkResponse({ type: MessageResponseDto})
-  @UseGuards(UserAuthGuard)
-  @Post('register/company')
-  async registerCompany(@Body() registerCompanyDto: RegisterCompanyDto, @GetUser() user: User){
-    return await this.authService.registerCompany(registerCompanyDto, user)
-  }
-
-
-
-
-  @ApiOperation({summary: 'Resend email verification'})
-  @ApiOkResponse({ type: MessageResponseDto })
-  @UseGuards(UserAuthGuard)
-  @Post('email')
-  async resendEmailVerification(
-    @GetUser() user: User
-  ): Promise<MessageResponseDto> {
-    return await this.authService.resendEmailVerification(user);
-  }
-
-  @ApiOperation({ summary: 'Verify email with Passcode' })
-  @ApiOkResponse({ type: MessageResponseDto })
-  @UseGuards(UserAuthGuard)
-  @Post('email/verification/passcode')
-  async passcodeVerification(
-    @Body() passcodeDto: PasscodeDto,
-    @GetUser() user: User,
-  ): Promise<MessageResponseDto> {
-    return await this.authService.passcodeVerification(passcodeDto, user);
-  }
-
-  @ApiOperation({ summary: 'Confirm email from url sent to email and login' })
-  @ApiOkResponse({ type: MessageResponseDto })
-  @Get('email/verification/:token')
-  async emailVerification(
-    @Param('token') token: string,
-    @Res() res: Response,
-  ): Promise<Response<MessageResponseDto>> {
-    const { refreshToken, accessToken } =
-      await this.authService.emailVerification(token);
-
-    res.cookie(COOKIE_NAMES.ACCESS_TOKEN, accessToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.ACCESS_TOKEN,
-    });
-
-    res.cookie(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.REFRESH_TOKEN,
-    });
-
-    return res.json({ message: 'Email verified and logged in successfully' });
-  }
-
-  @ApiOperation({ summary: "Set password for UserStatus='NO_PASSWORD' users" })
-  @ApiOkResponse({ type: MessageResponseDto })
-  @Post('password')
-  @UseGuards(UserAuthGuard)
-  async setPassword(
-    @Body() setPasswordDto: SetPasswordDto,
-    @GetUser() user: User,
-  ): Promise<MessageResponseDto> {
-    return await this.authService.setPassword(setPasswordDto, user);
-  }
-
-  @ApiOperation({ summary: 'Forgot Password Request Url' })
-  @ApiOkResponse({ type: MessageResponseDto })
-  @Post('password/forgot')
-  async forgotPassword(
-    @Body() emailDto: EmailDto,
-  ): Promise<MessageResponseDto> {
-    return await this.authService.forgotPasswordToken(emailDto);
-  }
-
-
-  @ApiOperation({ summary: 'Forgot Password Url verification' })
-  @ApiOkResponse({ type: MessageResponseDto })
-  @Get('password/forgot/:token')
-  async forgotPasswordVerification(
-    @Param('token') token: string,
-    @Res() res: Response,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken, refreshToken } =
-      await this.authService.forgotPasswordVerification(token);
+    const accessToken = req.cookies[AUTH_COOKIE_NAMES.ACCESS_TOKEN];
+    const refreshToken = req.cookies[AUTH_COOKIE_NAMES.REFRESH_TOKEN];
 
-    res.cookie(COOKIE_NAMES.ACCESS_TOKEN, accessToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.ACCESS_TOKEN,
-    });
-
-    res.cookie(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.REFRESH_TOKEN,
-    });
-
-    return res.json({
-      message: 'You are logged in, now you can change your password',
-    });
+    const result = await this.authService.logout(accessToken, refreshToken);
+    this.clearAuthCookies(res);
+    return result;
   }
 
-  @ApiOperation({ summary: 'Get information about logged user' })
-  @ApiOkResponse({ type: WhoAmIDto })
-  @Get('who-am-i')
-  async whoAmI(@Req() req: Request): Promise<WhoAmIDto> {
-    const token = req.cookies[COOKIE_NAMES.ACCESS_TOKEN];
-    return await this.authService.whoAmI(token);
-  }
-
-  @ApiOperation({ summary: 'Refresh Access Token' })
+  @Post('logout-all')
   @ApiOkResponse({ type: MessageResponseDto })
-  @Post('token')
-  async refreshAccesToken(
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logoutAll(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.logoutAll(user.id);
+    this.clearAuthCookies(res);
+    return result;
+  }
+
+  @Post('refresh')
+  @ApiOkResponse({ type: RefreshResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async refresh(
     @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<Response<MessageResponseDto>> {
-    const refreshToken = req.cookies[COOKIE_NAMES.REFRESH_TOKEN];
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = req.cookies[AUTH_COOKIE_NAMES.REFRESH_TOKEN];
     if (!refreshToken) {
-      throw new NotFoundException('No refresh token found');
+      this.clearAuthCookies(res);
+      throw new HttpException(
+        { success: false, message: 'No refresh token provided' },
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
+    const tokens = await this.authService.refreshTokens(refreshToken);
+    this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    return { success: true, ...tokens };
+  }
 
-    const { newAccessToken, newRefreshToken } =
-      await this.authService.refreshAccessToken(refreshToken);
+  // ==================== Email Verification ====================
 
-    res.cookie(COOKIE_NAMES.ACCESS_TOKEN, newAccessToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.ACCESS_TOKEN,
+  @Get('verification/status')
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'VerificationToken <verificationToken>',
+  })
+  @ApiOkResponse({ type: VerificationStatusResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async getVerificationStatus(@Req() req: Request) {
+    const verificationToken = this.extractSessionToken(
+      req.headers.authorization as string | undefined,
+      'VerificationToken',
+      AuthErrorCode.VERIFICATION_TOKEN_INVALID,
+      'Invalid verification session.',
+    );
+    return this.authService.getVerificationStatus(verificationToken);
+  }
+
+  @Post('verify')
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'VerificationToken <verificationToken>',
+  })
+  @ApiOkResponse({ type: TokenPairResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(
+    @Req() req: Request,
+    @Body() dto: VerifyEmailDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const verificationToken = this.extractSessionToken(
+      req.headers.authorization as string | undefined,
+      'VerificationToken',
+      AuthErrorCode.VERIFICATION_TOKEN_INVALID,
+      'Invalid verification session.',
+    );
+    const tokens = await this.authService.verifyEmail(verificationToken, dto);
+    this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    return tokens;
+  }
+
+  @Post('verification/resend')
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'VerificationToken <verificationToken>',
+  })
+  @ApiOkResponse({ type: ResendVerificationResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(@Req() req: Request) {
+    const verificationToken = this.extractSessionToken(
+      req.headers.authorization as string | undefined,
+      'VerificationToken',
+      AuthErrorCode.VERIFICATION_TOKEN_INVALID,
+      'Invalid verification session.',
+    );
+    return this.authService.resendVerification(verificationToken);
+  }
+
+  // ==================== Password Management ====================
+
+  @Post('forgot-password')
+  @ApiOkResponse({ type: ResetPasswordTokenResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Get('reset-password/status')
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'ResetToken <resetPasswordToken>',
+  })
+  @ApiOkResponse({ type: ResetPasswordStatusResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async getResetPasswordStatus(@Req() req: Request) {
+    const resetPasswordToken = this.extractSessionToken(
+      req.headers.authorization as string | undefined,
+      'ResetToken',
+      AuthErrorCode.RESET_TOKEN_INVALID,
+      'Invalid reset session.',
+    );
+    return this.authService.getResetPasswordStatus(resetPasswordToken);
+  }
+
+  @Post('verify-reset-password')
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'ResetToken <resetPasswordToken>',
+  })
+  @ApiOkResponse({ type: VerifyResetPasswordResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async verifyResetPassword(
+    @Req() req: Request,
+    @Body() dto: VerifyResetPasswordDto,
+  ) {
+    const resetPasswordToken = this.extractSessionToken(
+      req.headers.authorization as string | undefined,
+      'ResetToken',
+      AuthErrorCode.RESET_TOKEN_INVALID,
+      'Invalid reset session.',
+    );
+    return this.authService.verifyResetPassword(resetPasswordToken, dto);
+  }
+
+  @Post('reset-password/resend')
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'ResetToken <resetPasswordToken>',
+  })
+  @ApiOkResponse({ type: ResendResetPasswordResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async resendResetPassword(@Req() req: Request) {
+    const resetPasswordToken = this.extractSessionToken(
+      req.headers.authorization as string | undefined,
+      'ResetToken',
+      AuthErrorCode.RESET_TOKEN_INVALID,
+      'Invalid reset session.',
+    );
+    return this.authService.resendResetPassword(resetPasswordToken);
+  }
+
+  @Post('reset-password')
+  @ApiHeader({
+    name: 'Authorization',
+    required: true,
+    description: 'ResetToken <resetPasswordToken>',
+  })
+  @ApiOkResponse({ type: ResetPasswordResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Req() req: Request,
+    @Body() dto: ResetPasswordDto,
+  ) {
+    const resetPasswordToken = this.extractSessionToken(
+      req.headers.authorization as string | undefined,
+      'ResetToken',
+      AuthErrorCode.RESET_TOKEN_INVALID,
+      'Invalid reset session.',
+    );
+    return this.authService.resetPassword(resetPasswordToken, dto);
+  }
+
+  @Post('change-password')
+  @ApiOkResponse({ type: MessageResponseDto })
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.authService.changePassword(dto, user.id);
+  }
+
+  // ==================== User Profile ====================
+
+  @Get('who-am-i')
+  @ApiOkResponse({ type: UserResponseDto })
+  @UseGuards(AuthGuard)
+  async whoAmI(@CurrentUser() user: User) {
+    return this.authService.getMe(user);
+  }
+
+  // ==================== Company Profile ====================
+
+  @Patch('company-profile')
+  @ApiOkResponse({ type: CompanyResponseDto })
+  @UseGuards(AuthGuard, EmailVerifiedGuard, CompanyRequiredGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateCompanyProfile(
+    @Body() dto: UpdateCompanyProfileDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.authService.updateCompanyProfile(dto, user);
+  }
+
+  // ==================== Helper Methods ====================
+
+  private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
+    res.cookie(AUTH_COOKIE_NAMES.ACCESS_TOKEN, accessToken, {
+      ...AUTH_COOKIE_CONFIG,
+      maxAge: AUTH_TOKEN_EXPIRY.ACCESS_TOKEN_MS,
     });
-
-    res.cookie(COOKIE_NAMES.REFRESH_TOKEN, newRefreshToken, {
-      ...COOKIE_CONFIG,
-      maxAge: TOKEN_EXPIRATION_MS.REFRESH_TOKEN,
+    res.cookie(AUTH_COOKIE_NAMES.REFRESH_TOKEN, refreshToken, {
+      ...AUTH_COOKIE_CONFIG,
+      maxAge: AUTH_TOKEN_EXPIRY.REFRESH_TOKEN_MS,
     });
+  }
 
-    return res.json({ message: 'Tokens refreshed successfully.' });
+  private clearAuthCookies(res: Response) {
+    res.clearCookie(AUTH_COOKIE_NAMES.ACCESS_TOKEN, AUTH_COOKIE_CONFIG);
+    res.clearCookie(AUTH_COOKIE_NAMES.REFRESH_TOKEN, AUTH_COOKIE_CONFIG);
+  }
+
+  private extractSessionToken(
+    authorization: string | undefined,
+    scheme: 'VerificationToken' | 'ResetToken',
+    errorCode: AuthErrorCode,
+    message: string,
+  ): string {
+    if (!authorization) {
+      throw new HttpException({ errorCode, message }, HttpStatus.BAD_REQUEST);
+    }
+
+    const [prefix, token] = authorization.trim().split(/\s+/);
+    if (prefix !== scheme || !token) {
+      throw new HttpException({ errorCode, message }, HttpStatus.BAD_REQUEST);
+    }
+
+    return token;
   }
 }

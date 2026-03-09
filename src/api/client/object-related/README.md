@@ -1,61 +1,453 @@
-# Object-related (Client)
+# Object-Related Module — v2
 
-ObjectRelatedModule bundles the CRM customization surface (object types, fields, associations, and runtime objects) that is exposed in the Client API Swagger. Most endpoints sit behind `UserAuthGuard` (user JWT), which also sets the company context so repositories transparently scope queries to the caller's company.
+`ObjectRelatedModule` is the CRM engine of the client API. It provides everything needed to define a custom data model (object types, fields, association types) and then create, query, and relate records against that model. Every piece of data is scoped to the caller's company via `UserAuthGuard` + `CompanyContext`.
 
-## Entities at a glance
-- `CrmObjectType`: Name, `apiName`, and optional description for a given company; owns `fields` and `objects`.
-- `CrmObjectField`: Belongs to an object type and company; has `fieldType` (see `FieldType` enum), optional `description`, optional `shape`/`configShape`, and a company-unique `apiName`.
-- `CrmObject`: Instance of an object type with `displayName` and dynamic `fieldValues` JSON; belongs to a company and may participate in associations.
-- `CrmAssociationType`: Defines how two object types relate (endpoints + cardinality); stores `sourceObjectType`, `targetObjectType`, `sourceCardinality`, `targetCardinality`, `apiName`, `isBidirectional`, and optional `reverseName`/`description`.
-- `CrmObjectAssociation`: Concrete link between two objects under a company and an association type; optional `metadata` JSON and `reverseOf` link.
+---
 
-## Field types
-- Supported enum values: `string`, `number`, `boolean`, `date`, `datetime`, `json`, `phone`, `email`, `url`, `textarea`, `select`, `multi_select`, `currency`, `formula`, `address`.
-- `GET /crm-object-field` returns the enum list; `GET /crm-object-field/:type` returns label and description metadata. These two endpoints are public (no guard) and power the field-builder UI.
+## Directory Structure
 
-## API surface
-### CRM Object Types (`/crm-object-type`, guard: `UserAuthGuard`)
-| Method & Path | Body | Response | Notes |
-| --- | --- | --- | --- |
-| GET `/` | Query: `limit` (required), `offset` (required), `searchQuery` (optional), `associationCheck` (optional) | `GetAllObjectsResponseDto` | Paginates object types scoped to the caller's company; `associationCheck` excludes types already associated with the provided object type id. |
-| POST `/` | `CreateCrmObjectTypeDto` | `string` (new id) | Validates `apiName` snake_case and uniqueness per company. |
-| GET `/:id` | – | `GetSingleObjectTypeDto` | 404 if id is missing. |
-| GET `/api-name/:value` | – | `boolean` | Returns availability for the requested `apiName` (also validates snake_case). |
-| PATCH `/:id` | `UpdateCrmObjectTypeDto` | `{ message }` | Updates `name` and/or `description`. |
-| DELETE `/:id` | – | `{ message }` | Removes the object type. |
+```
+object-related/
+├── object-related.module.ts
+├── crm-object-type/          # Schema: define object types (Contact, Deal, etc.)
+├── crm-object-field/         # Schema: define fields on those types
+│   ├── field-types/          # Registry of all supported field types + metadata
+│   └── formula/              # Formula expression tree engine
+├── crm-association-type/     # Schema: define relationship types between object types
+├── crm-object/               # Data: CRUD on actual records
+│   └── services/             # Field validation, protected-field handling
+├── crm-object-association/   # Data: link records together
+└── import/                   # Bulk data ingestion from CSV
+```
 
-### CRM Object Fields (`/crm-object-field`)
-| Method & Path | Auth | Body | Response | Notes |
-| --- | --- | --- | --- | --- |
-| GET `/` | none | – | `{ types: FieldType[] }` | Supported field types (no guard). |
-| GET `/:type` | none | – | `FieldTypeDefinitionDto` | Metadata for a specific field type (label/description + shape/configShape schemas when defined). |
-| POST `/` | `UserAuthGuard` | `CreateCrmObjectFieldDto` | `CrmObjectField` | Validates target `objectTypeId`, `shape`, `configShape`, and `apiName` uniqueness. |
-| GET `/formula/categories` | none | – | `FormulaCategory[]` | Supported formula categories. |
-| GET `/formula/category-to-functions` | none | Query: optional `categories` array | `{ math?, string?, date? }` | Category → function-name lists (supports `?categories=math,string`). |
-| GET `/formula/functions` | none | Query: optional `category`, optional `name` | `FormulaFunctionDefinitionDto[]` | Function metadata (return type + arg signature). |
-| GET `/formula/context/:objectTypeId` | `UserAuthGuard` | – | `{ objectTypeId, fields, fieldTypes }` | Formula-usable fields + derived primitive type hints for validation. |
-| POST `/formula/normalize` | `UserAuthGuard` | `NormalizeFormulaDto` | `{ valid, errors, normalized }` | Normalizes + validates an `expressionTree` (requires `objectTypeId` for field/type validation). |
-| PATCH `/:id/formula` | `UserAuthGuard` | `UpdateFormulaConfigDto` | `CrmObjectField` | Updates a formula field's `configShape` (expressionTree-only; normalizes + validates before saving). |
-| PATCH `/:id` | `UserAuthGuard` | `UpdateCrmObjectFieldDto` | `{ message }` | Updates `name`/`description`/`isRequired`. |
-| DELETE `/:id` | `UserAuthGuard` | – | `{ message }` | 404 if the field is missing. |
-| GET `/:id/fields` | `UserAuthGuard` | Query: `limit`, `offset`, optional `searchQuery` | Paged list shaped like `ObjectFieldDto` | Returns fields for the given object type within the caller's company. |
+---
 
-### CRM Association Types (`/crm-association-type`, guard: `UserAuthGuard`)
-| Method & Path | Body | Response | Notes |
-| --- | --- | --- | --- |
-| GET `/` | Query: `limit` (required), `offset` (required), optional `searchQuery`, optional `objectTypeId` | `GetAllAssociationTypesResponseDto` | Paginates association types scoped to the caller's company (joins in source/target type names). |
-| POST `/` | `CreateCrmAssociationTypeDto` | `string` (new id) | Validates endpoints exist in the company; self-associations are rejected. |
-| GET `/:id` | – | `GetSingleAssociationTypeDto` | 404 if id is missing. |
-| GET `/api-name/:value` | – | `boolean` | Returns availability for the requested `apiName` (also validates snake_case). |
-| PATCH `/:id` | `UpdateCrmAssociationTypeDto` | `{ message }` | Updates labels/description/cardinality (tightening to `ONE` is blocked if existing associations violate it). |
-| DELETE `/:id` | – | `{ message }` | Blocked while any `CrmObjectAssociation` rows exist for the type. |
+## Core Concepts
 
-## Multi-tenant behavior
-- `UserAuthGuard` attaches `companyId` to the CLS context; `CompanyContext` reads it and `BaseCompanyRepository` automatically applies it across `find*`, `existsBy`, `update`, and `delete` calls.
-- Repository `create` also injects the current company, so callers never pass `companyId` manually.
+### The Two Layers
 
-## Pending surfaces
-- `crm-object` and `crm-object-association` modules are wired into `ObjectRelatedModule` but their controllers/services currently expose no routes.
+| Layer | What it is | Examples |
+|-------|-----------|---------|
+| **Schema** | Definitions of shape | `CrmObjectType`, `CrmObjectField`, `CrmAssociationType` |
+| **Data** | Actual records | `CrmObject`, `CrmObjectAssociation` |
+
+Schema is defined once per company. Data lives under a schema.
+
+### Multi-Tenant Scoping
+
+`UserAuthGuard` validates the JWT and writes `companyId` into a request-local CLS context. `BaseCompanyRepository` (extended by all repositories here) automatically appends `WHERE company_id = ?` to every query — callers never pass `companyId` explicitly.
+
+---
+
+## Entities
+
+### `CrmObjectType`
+Defines a named entity category (think "Contact" or "Deal").
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `name` | string | Display label |
+| `apiName` | string | snake_case, company-unique |
+| `description` | string? | Optional |
+| `protection` | enum? | Template protection level |
+| `fields` | `CrmObjectField[]` | One-to-many |
+| `objects` | `CrmObject[]` | One-to-many |
+
+### `CrmObjectField`
+One field definition on a `CrmObjectType`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `objectType` | `CrmObjectType` | Parent type (cascade delete) |
+| `name` | string | Display label |
+| `apiName` | string | snake_case, company-unique |
+| `fieldType` | `FieldType` enum | See Field Types section |
+| `isRequired` | boolean | Default false |
+| `shape` | JSONB? | Defines value structure |
+| `configShape` | JSONB? | Type-specific config (options, rules) |
+| `protection` | enum? | Template protection level |
+
+### `CrmObject`
+One record of a `CrmObjectType`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `objectType` | `CrmObjectType` | Parent type |
+| `displayName` | string | Human-readable identifier |
+| `fieldValues` | JSONB | `{ [apiName]: value }` |
+| `createdAt` | Date | |
+| `updatedAt` | Date | |
+
+### `CrmAssociationType`
+Defines a named relationship between two `CrmObjectType`s.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `sourceObjectType` | `CrmObjectType` | FK (delete restricted) |
+| `targetObjectType` | `CrmObjectType` | FK (delete restricted) |
+| `name` | string | Forward label ("has many") |
+| `apiName` | string | snake_case, company-unique |
+| `sourceCardinality` | `ONE \| MANY` | Max links from source side |
+| `targetCardinality` | `ONE \| MANY` | Max links from target side |
+| `isBidirectional` | boolean | Auto-creates reverse link |
+| `reverseName` | string? | Reverse label ("belongs to") |
+
+### `CrmObjectAssociation`
+One concrete link between two `CrmObject` records.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `sourceObject` | `CrmObject` | Source record |
+| `targetObject` | `CrmObject` | Target record |
+| `type` | `CrmAssociationType` | The relationship definition |
+| `reverseOf` | `CrmObjectAssociation`? | Mirrors reverse link |
+| `metadata` | JSONB? | Optional extra data |
+| Unique | `(company, type, source, target)` | No duplicate links |
+
+---
+
+## Field Types
+
+### Supported Types
+
+| Enum value | Label | Usable in formula | Formula capable | Protected |
+|-----------|-------|:-----------------:|:---------------:|:---------:|
+| `string` | Text | ✓ | ✓ | |
+| `number` | Number | ✓ | ✓ | |
+| `boolean` | Checkbox | ✓ | | |
+| `date` | Date | ✓ | ✓ | |
+| `datetime` | Date & Time | ✓ | ✓ | |
+| `textarea` | Long Text | | ✓ | |
+| `select` | Dropdown | ✓ | | |
+| `multi_select` | Multi-select | ✓ | | |
+| `currency` | Currency | ✓ | ✓ | |
+| `url` | URL | | | |
+| `email` | Email | | | |
+| `phone` | Phone | | | |
+| `address` | Address | | | |
+| `json` | JSON | | | |
+| `formula` | Formula | ✓ | ✓ | |
+| `protected_email` | Protected Email | | | ✓ |
+| `protected_phone` | Protected Phone | | | ✓ |
+| `protected_address` | Protected Address | | | ✓ |
+
+### Field Type Registry
+
+`GET /crm-object-field/definition` (public, no auth) returns the full registry. Each entry includes:
+
+```json
+{
+  "string": {
+    "label": "Text",
+    "shape": { "value": { "type": "string", "optional": true } },
+    "configShape": null,
+    "actions": [],
+    "isFormulaCapable": true,
+    "isUsableInFormula": true,
+    "isProtected": false
+  }
+}
+```
+
+Pass `?type=select` to get a single entry.
+
+### Structured Field Shapes
+
+Some types store structured values in `fieldValues`:
+
+**`address`**
+```json
+{ "street": "...", "city": "...", "state": "...", "zip": "...", "country": "..." }
+```
+
+**`phone`**
+```json
+{ "countryCode": "+1", "number": "5551234567" }
+```
+
+**`select` / `multi_select`** — configShape carries the options list:
+```json
+{ "options": [{ "id": "opt_1", "label": "Open", "value": "open" }] }
+```
+
+**`protected_*`** — value shape stores only a reference ID:
+```json
+{ "protectedValueId": "uuid" }
+```
+
+---
+
+## Formula Field System
+
+### How it Works
+
+Formula fields compute a value from other fields on the same object. The formula is stored as an **expression tree** (not an infix string).
+
+```
+Field definition (CrmObjectField)
+  └── configShape
+        ├── category: "string" | "math" | "date"
+        ├── expressionTree: { ... }     ← stored tree
+        └── dependsOnFields: ["first_name", "last_name"]
+```
+
+### Expression Tree Shape
+
+```json
+{ "field": "api_name" }            // reference a field
+{ "literal": 42 }                  // inline value
+{ "function": "JOIN", "args": [...] }  // function call
+```
+
+Example: concatenate first + last name separated by a space:
+```json
+{
+  "function": "JOIN",
+  "args": [
+    { "literal": " " },
+    { "field": "first_name" },
+    { "field": "last_name" }
+  ]
+}
+```
+
+### Formula Endpoints (all public except `context` and `normalize`)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /formula/categories` | Available categories: `math`, `string`, `date` |
+| `GET /formula/category-to-functions` | Category → list of function names |
+| `GET /formula/functions` | Full function metadata (signature, return type) |
+| `GET /formula/context/:objectTypeId` | Fields + type hints for this object type |
+| `POST /formula/normalize` | Validate & normalize a tree (returns `{ valid, errors, normalized }`) |
+| `PATCH /:id/formula` | Save validated formula config to a field |
+
+### Frontend Formula Workflow
+
+1. Fetch context → know which fields are usable
+2. User builds expression tree in UI
+3. `POST /formula/normalize` → validate before saving
+4. On success, `PATCH /:id/formula` to persist
+
+---
+
+## Association System
+
+### Cardinality
+
+| sourceCardinality | targetCardinality | Meaning |
+|:-:|:-:|---------|
+| MANY | MANY | Each record can link to unlimited others in both directions |
+| ONE | MANY | Each source links to at most 1 target; target can be linked from many |
+| MANY | ONE | Each source can link to many targets; target links to at most 1 source |
+| ONE | ONE | Strict 1-to-1 |
+
+Cardinality is **enforced at write time**. Attempting to add a second link that violates `ONE` throws a `409 Conflict`.
+
+Tightening an existing `MANY → ONE` constraint is **blocked** if existing data would violate it.
+
+### Bidirectional Associations
+
+When `isBidirectional = true`, creating an association `A → B` automatically creates the reverse `B → A` in the same transaction, linked via `reverseOf`. Deleting either half deletes both.
+
+### Viewing Associations on an Object
+
+`GET /crm-object/:id/associations` returns all associations grouped by type + role:
+
+```json
+{
+  "groups": [
+    {
+      "typeId": "...",
+      "typeName": "Has contacts",
+      "typeApiName": "has_contacts",
+      "role": "source",
+      "linkedObjects": [ { "id": "...", "displayName": "...", "fieldValues": {} } ],
+      "total": 12
+    }
+  ]
+}
+```
+
+`linkedObjects` is capped at 5 for previews; `total` gives the real count.
+
+---
+
+## CRM Object CRUD
+
+### Creating Objects
+
+`POST /crm-object`
+
+```json
+{
+  "objectTypeId": "uuid",
+  "displayName": "Acme Corp",
+  "fieldValues": {
+    "email": { "value": "acme@example.com" },
+    "employees": { "value": 200 }
+  }
+}
+```
+
+Field values are validated against the type's field definitions:
+- Required fields must be present on create
+- Values must match the field's `shape`
+- Formula fields are **read-only** (ignored on create/update, computed on read)
+- Protected field values are split off and stored encrypted separately
+
+### Updating Objects
+
+`PATCH /crm-object/:id` — update `displayName` and/or `fieldValues` (partial update, unset keys untouched).
+
+`PATCH /crm-object/:id/field/:apiName` — update a single field by its API name.
+
+### Bulk Operations
+
+All entity types support bulk variants:
+
+| Operation | Endpoint |
+|-----------|---------|
+| Bulk create objects | `POST /crm-object/bulk` |
+| Bulk update objects | `PATCH /crm-object/bulk` |
+| Bulk delete objects | `DELETE /crm-object/bulk` |
+| Bulk create associations | `POST /crm-object-association/bulk` |
+| Bulk delete associations | `DELETE /crm-object-association/bulk` |
+
+Bulk responses report per-item success/failure without aborting the whole batch:
+
+```json
+{
+  "total": 3,
+  "successful": 2,
+  "failed": 1,
+  "results": [
+    { "index": 0, "success": true, "id": "uuid" },
+    { "index": 1, "success": true, "id": "uuid" },
+    { "index": 2, "success": false, "error": "Field 'email' is required" }
+  ]
+}
+```
+
+### Full Object Response
+
+`GET /crm-object/:id/full` returns the object enriched with:
+- Field metadata (label, type, required flag) alongside each value
+- Association summaries (grouped, same shape as `/associations`)
+
+---
+
+## Protected Fields
+
+Protected fields (`protected_phone`, `protected_email`, `protected_address`) store their actual value encrypted in a separate `ProtectedValue` entity. The `fieldValues` JSON only holds `{ protectedValueId: "uuid" }`.
+
+### Accessing Protected Values
+
+Use the **Protected Actions** controller:
+
+| Endpoint | Purpose |
+|---------|---------|
+| `POST /client/protected-actions/call` | Initiate a call to a protected phone |
+| `POST /client/protected-actions/sms` | Send SMS to a protected phone |
+| `POST /client/protected-actions/email` | Send email to a protected email |
+
+The `configShape` of a protected field controls which actions are allowed (`allowedActions`), how the value is masked in the UI (`maskingStyle`), and whether the full value can be revealed (`revealable`).
+
+---
+
+## Import Feature
+
+Bulk data ingestion from CSV into any combination of CRM object types with optional association creation.
+
+### Flow Overview
+
+```
+1. Upload       Upload CSV to S3 via presigned URL
+2. Session      Create import session
+3. Configure    Map columns → fields, set match rules, define link rules
+4. Validate     Server confirms mapping is complete and valid
+5. Parse        Server reads rows from S3 into staging records
+6. Execute      Start background import job
+7. Monitor      Poll job status + retrieve per-row results
+```
+
+### Key Concepts
+
+**ImportObjectMap** — tells the importer "for each row, create/update/skip a record of this object type, matching by these fields."
+
+**ImportFieldMap** — maps a CSV column (by index) to a CRM field. Supports default values and transform rules.
+
+**ImportDraftField** — create a brand-new field as part of the import (no pre-creation needed).
+
+**ImportLinkRule** — creates associations between object types being imported in the same session.
+
+**ImportDraftAssociationType** — define a new association type on the fly during import.
+
+### Match Behaviors
+
+| Behavior | Effect |
+|----------|--------|
+| `CREATE` | Always insert a new record |
+| `UPDATE` | Match by `matchFields`; update if found, insert if not |
+| `SKIP` | Match by `matchFields`; skip the row if a match exists |
+
+---
+
+## Endpoint Summary
+
+### Schema Endpoints
+
+**CRM Object Types** — `GET|POST /crm-object-type`, `GET|PATCH|DELETE /crm-object-type/:id`
+
+**CRM Object Fields** — `GET|POST /crm-object-field`, `PATCH|DELETE /crm-object-field/:id`
+
+**CRM Association Types** — `GET|POST /crm-association-type`, `GET|PATCH|DELETE /crm-association-type/:id`
+
+All schema endpoints are behind `UserAuthGuard`. `GET /crm-object-field/definition` and all `/formula/` helper endpoints are **public** (no auth) to power frontend builders without requiring login.
+
+### Data Endpoints
+
+**CRM Objects** — `GET|POST /crm-object`, `GET|PATCH|DELETE /crm-object/:id`
+
+**Associations** — `GET|POST /crm-object-association`, `DELETE /crm-object-association/:id`
+
+**Protected Actions** — `POST /client/protected-actions/{call,sms,email}`
+
+**Import** — `GET|POST /object-import/*` (multi-step, see Import section)
+
+### Common Query Parameters
+
+| Param | Used by | Description |
+|-------|---------|-------------|
+| `limit` | all lists | Page size (required) |
+| `offset` | all lists | Page offset (required) |
+| `searchQuery` | most lists | Optional free-text filter |
+| `objectTypeId` | objects, assoc types | Scope to specific type |
+| `associationCheck` | object types | Exclude types already associated with given id |
+
+### `apiName` Availability
+
+Every schema type exposes `GET /:type/api-name/:value → boolean` to pre-check availability before creation. Also validates snake_case format.
+
+---
+
+## Error Patterns
+
+Schema creation and updates throw `BadRequestException` / `ConflictException` with a structured body:
+
+```json
+{ "code": "ASSOCIATION_ALREADY_EXISTS", "message": "..." }
+```
+
+Bulk operations never throw — failures are captured per-item in the response.
+
+---
 
 ## Swagger
-- `ObjectRelatedModule` is included in the Client API Swagger (`/client` UI and `/client/api-json`), so these endpoints appear alongside other client routes.
+
+`ObjectRelatedModule` is included in the client Swagger at `/client` (UI) and `/client/api-json`.

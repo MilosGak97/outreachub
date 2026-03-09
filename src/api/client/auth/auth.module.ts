@@ -1,38 +1,64 @@
 import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { AuthRepository } from './auth.repository';
-import { TokenRepository } from 'src/api/repositories/postgres/token.repository';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from 'src/api/entities/user.entity';
-import { Token } from 'src/api/entities/token.entity';
-import { EmailService } from 'src/api/email/email.service';
-import { JwtUserStrategy } from './jwtUser.strategy';
+import { ConfigModule } from '@nestjs/config';
+
+// Controller
+import { AuthController } from './auth.controller';
+
+// Services
+import { AuthService } from './services/auth.service';
+import { TokenService } from './services/token.service';
+
+// Strategy
+import { JwtStrategy } from './strategies/jwt.strategy';
+
+// Guards
+import { AuthGuard } from './guards/auth.guard';
+import { OptionalAuthGuard } from './guards/optional-auth.guard';
+import { CompanyRequiredGuard } from './guards/company-required.guard';
+import { EmailVerifiedGuard } from './guards/email-verified.guard';
+
+// Entities
+import { User } from '../../entities/user.entity';
+import { Token } from '../../entities/token.entity';
 import { Company } from '../../entities/company.entity';
-import { CompanyRepository } from '../../repositories/postgres/company.repository';
-import { TokenCleanupService } from './services/token-cleanup.service';
-import { TemplatesModule } from '../../admin/templates/templates.module';
+
+// Email Service
+import { EmailService } from '../../email/email.service';
 
 @Module({
   imports: [
-    JwtModule.register({secret: process.env.CLIENT_JWT_SECRET}),
-    PassportModule.register({defaultStrategy: 'jwt'}),
+    ConfigModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     TypeOrmModule.forFeature([User, Token, Company]),
-    TemplatesModule,
   ],
   controllers: [AuthController],
   providers: [
+    // Services
     AuthService,
-    AuthRepository,
-    TokenRepository,
+    TokenService,
     EmailService,
-    JwtUserStrategy,
-    CompanyRepository,
-    TokenCleanupService,
+
+    // Strategy
+    JwtStrategy,
+
+    // Guards (exported for use in other modules)
+    AuthGuard,
+    OptionalAuthGuard,
+    CompanyRequiredGuard,
+    EmailVerifiedGuard,
   ],
-  
-exports: [JwtUserStrategy, PassportModule],
+  exports: [
+    // Export for use in other modules
+    AuthService,
+    TokenService,
+    JwtStrategy,
+    PassportModule,
+    AuthGuard,
+    OptionalAuthGuard,
+    CompanyRequiredGuard,
+    EmailVerifiedGuard,
+  ],
 })
-export class AuthModule {} 
+export class AuthModule {}

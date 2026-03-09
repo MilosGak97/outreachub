@@ -14,6 +14,7 @@ import { ClientModule } from './api/client/client.module';
 import * as cookieParser from 'cookie-parser';
 import * as bodyParser from 'body-parser';
 import { ObjectRelatedModule } from './api/client/object-related/object-related.module';
+import { CommonModule } from './api/common/common.module';
 
 async function bootstrap() {
   dotenv.config();
@@ -42,6 +43,7 @@ async function bootstrap() {
     'auth',
     'admin',
     'common',
+    'filter-presets',
     'companies',
     'properties',
     'scraper',
@@ -51,6 +53,19 @@ async function bootstrap() {
     'templates/blueprint-objects',
     'templates/blueprint-fields',
     'templates/blueprint-associations',
+  ];
+
+  const clientTagOrder = [
+    'Auth',
+    'common',
+    'filter-presets',
+    'CRM Objects',
+    'Crm Object Type',
+    'Crm Object Field',
+    'Crm Association Type',
+    'CRM Object Associations',
+    'Protected Actions',
+    'Object Import',
   ];
 
   // Swagger setup for Admin API
@@ -63,7 +78,7 @@ async function bootstrap() {
   const adminConfig = adminConfigBuilder.build();
 
   const optionAdmin: SwaggerDocumentOptions = {
-    include: [AdminModule],
+    include: [AdminModule, CommonModule],
     deepScanRoutes: true,
   };
 
@@ -88,14 +103,16 @@ async function bootstrap() {
   });
 
   // Swagger setup for Client API
-  const clientConfig = new DocumentBuilder()
+  const clientConfigBuilder = new DocumentBuilder()
     .setTitle('Client API')
     .setDescription('Client Application API')
-    .setVersion('1.0')
-    .build();
+    .setVersion('1.0');
+
+  clientTagOrder.forEach((tag) => clientConfigBuilder.addTag(tag));
+  const clientConfig = clientConfigBuilder.build();
 
   const optionClient: SwaggerDocumentOptions = {
-    include: [ClientModule, ObjectRelatedModule],
+    include: [ClientModule, ObjectRelatedModule, CommonModule],
     deepScanRoutes: true,
   };
 
@@ -104,6 +121,13 @@ async function bootstrap() {
     clientConfig,
     optionClient,
   );
+
+  const clientTagMetadata = new Map((clientDocument.tags ?? []).map((tag) => [tag.name, tag]));
+  const orderedClientTags = clientTagOrder.map((name) => clientTagMetadata.get(name) ?? { name });
+  const extraClientTags = (clientDocument.tags ?? []).filter(
+    (tag) => !clientTagOrder.includes(tag.name),
+  );
+  clientDocument.tags = [...orderedClientTags, ...extraClientTags];
 
   SwaggerModule.setup('client', app, clientDocument); // Client Swagger UI
   // Expose the Client API OpenAPI JSON
@@ -138,8 +162,22 @@ async function bootstrap() {
     }),
   );
 
+  const rawCorsOrigins = process.env.CORS_ORIGINS ?? '';
+  const corsOrigins = rawCorsOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
   app.enableCors({
-    origin: ['https://localhost:5174', 'https://localhost:5173', 'https://dynamic-dragon-7ee9d5.netlify.app', 'https://subrosahubclient.netlify.app'], // Allow multiple origins
+    origin:
+      corsOrigins.length > 0
+        ? corsOrigins
+        : [
+            'https://localhost:5174',
+            'https://localhost:5173',
+            'https://dynamic-dragon-7ee9d5.netlify.app',
+            'https://subrosahubclient.netlify.app',
+          ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
