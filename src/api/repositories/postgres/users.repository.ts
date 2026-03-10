@@ -7,6 +7,9 @@ import {
 } from '@nestjs/common';
 import { User } from 'src/api/entities/user.entity';
 import { UserStatus } from 'src/api/enums/user/user-status.enum';
+import { UserRole } from 'src/api/enums/user/user-role.enum';
+import { UserType } from 'src/api/enums/user/user-type.enum';
+import { Company } from 'src/api/entities/company.entity';
 import { DataSource, Repository } from 'typeorm';
 import { GetCompaniesUsersDto } from '../../admin/companies/dto/get-companies-users.dto';
 import { UpdateUserDto } from '../../admin/companies/dto/update-user.dto';
@@ -62,6 +65,37 @@ export class UserRepository extends Repository<User> {
       password += characters[randomIndex];
     }
     return password;
+  }
+
+  /* -------------- AUTH METHODS --------------- */
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.findOne({ where: { email } });
+  }
+
+  async findByEmailWithCompany(email: string): Promise<User | null> {
+    return this.findOne({ where: { email }, relations: ['company'] });
+  }
+
+  async findByVerificationToken(verificationToken: string): Promise<User | null> {
+    return this.findOne({ where: { verificationToken } });
+  }
+
+  async createAuthUser(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    company: Company;
+  }): Promise<User> {
+    const user = this.create({
+      ...data,
+      emailVerified: false,
+      status: UserStatus.NEW_REGISTER,
+      role: UserRole.HEAD,
+      userType: UserType.USER,
+    });
+    return this.save(user);
   }
 
   /* -------------- PUBLIC METHODS --------------- */

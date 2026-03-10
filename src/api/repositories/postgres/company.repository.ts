@@ -26,6 +26,11 @@ export class CompanyRepository extends Repository<Company> {
     super(Company, dataSource.createEntityManager());
   }
 
+  async createAuthCompany(name: string): Promise<Company> {
+    const company = this.create({ name });
+    return this.save(company);
+  }
+
   // method to list all companies
   async getCompanies(
     getCompaniesDto: GetCompaniesDto,

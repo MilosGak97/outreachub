@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 
 // Controller
 import { AuthController } from './auth.controller';
@@ -19,10 +19,9 @@ import { OptionalAuthGuard } from './guards/optional-auth.guard';
 import { CompanyRequiredGuard } from './guards/company-required.guard';
 import { EmailVerifiedGuard } from './guards/email-verified.guard';
 
-// Entities
-import { User } from '../../entities/user.entity';
-import { Token } from '../../entities/token.entity';
-import { Company } from '../../entities/company.entity';
+// Repositories
+import { UserRepository } from '../../repositories/postgres/users.repository';
+import { CompanyRepository } from '../../repositories/postgres/company.repository';
 
 // Email Service
 import { EmailService } from '../../email/email.service';
@@ -31,26 +30,22 @@ import { EmailService } from '../../email/email.service';
   imports: [
     ConfigModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    TypeOrmModule.forFeature([User, Token, Company]),
+    JwtModule.register({}), // Required to satisfy UserRepository's JwtService dependency
   ],
   controllers: [AuthController],
   providers: [
-    // Services
     AuthService,
     TokenService,
     EmailService,
-
-    // Strategy
     JwtStrategy,
-
-    // Guards (exported for use in other modules)
     AuthGuard,
     OptionalAuthGuard,
     CompanyRequiredGuard,
     EmailVerifiedGuard,
+    UserRepository,
+    CompanyRepository,
   ],
   exports: [
-    // Export for use in other modules
     AuthService,
     TokenService,
     JwtStrategy,
