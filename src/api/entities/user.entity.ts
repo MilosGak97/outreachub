@@ -82,13 +82,13 @@ export class User {
   @ApiProperty({ required: false })
   @IsDate()
   @IsOptional()
-  @Column({ name: 'verification_token_expires_at', nullable: true })
+  @Column({ name: 'verification_token_expires_at', type: 'timestamptz', nullable: true })
   verificationTokenExpiresAt?: Date;
 
   @ApiProperty({ required: false })
   @IsDate()
   @IsOptional()
-  @Column({ name: 'passcode_expires_at', nullable: true })
+  @Column({ name: 'passcode_expires_at', type: 'timestamptz', nullable: true })
   passcodeExpiresAt?: Date;
 
   @ApiProperty({ required: true })
@@ -118,7 +118,7 @@ export class User {
   @ApiProperty({ required: false })
   @IsDate()
   @IsOptional()
-  @Column({ name: 'status_updated_at', nullable: true })
+  @Column({ name: 'status_updated_at', type: 'timestamptz', nullable: true })
   statusUpdatedAt: Date;
 
   @ApiProperty({ required: false })
