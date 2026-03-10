@@ -157,7 +157,7 @@ export class AuthService {
     dto: VerifyEmailDto,
   ): Promise<TokenPairResponseDto> {
     const user = await this.getUserByVerificationTokenOrThrow(verificationToken);
-    this.ensureVerificationTokenValidOrThrow(user);
+    await this.ensureVerificationTokenValidOrThrow(user);
 
     const isPasscodeValid = await bcrypt.compare(dto.code, user.passcode || '');
     if (!isPasscodeValid || !user.passcodeExpiresAt || user.passcodeExpiresAt < new Date()) {
@@ -190,7 +190,7 @@ export class AuthService {
     verificationToken: string,
   ): Promise<VerificationStatusResponseDto> {
     const user = await this.getUserByVerificationTokenOrThrow(verificationToken);
-    this.ensureVerificationTokenValidOrThrow(user);
+    await this.ensureVerificationTokenValidOrThrow(user);
     return {
       retryAfter: this.getRetryAfterSeconds(
         user.passcodeExpiresAt,
@@ -209,7 +209,7 @@ export class AuthService {
     verificationToken: string,
   ): Promise<ResendVerificationResponseDto> {
     const user = await this.getUserByVerificationTokenOrThrow(verificationToken);
-    this.ensureVerificationTokenValidOrThrow(user);
+    await this.ensureVerificationTokenValidOrThrow(user);
     const retryAfter = this.getRetryAfterSeconds(
       user.passcodeExpiresAt,
       EMAIL_VERIFICATION.CODE_EXPIRY_MINUTES,
@@ -497,12 +497,12 @@ export class AuthService {
     const message =
       'If an account exists with this email, you will receive a password reset code.';
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
-    const resetPasswordToken = this.generateResetToken();
 
     if (!user || !user.emailVerified) {
-      return { resetPasswordToken, message };
+      return { message };
     }
 
+    const resetPasswordToken = this.generateResetToken();
     const now = new Date();
     const passcode = this.generateNumericCode(RESET_PASSWORD_SESSION.CODE_LENGTH);
     user.verificationToken = resetPasswordToken;

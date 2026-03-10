@@ -71,8 +71,8 @@ export class ResendVerificationResponseDto {
 }
 
 export class ResetPasswordTokenResponseDto {
-  @ApiProperty({ description: 'Reset password token for password reset flow' })
-  resetPasswordToken: string;
+  @ApiPropertyOptional({ description: 'Reset password token for password reset flow. Absent when account does not exist or is not verified.' })
+  resetPasswordToken?: string;
 
   @ApiPropertyOptional({ description: 'User-friendly message' })
   message?: string;
