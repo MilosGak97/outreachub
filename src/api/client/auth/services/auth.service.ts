@@ -114,6 +114,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (!this.hasStoredPassword(user.password)) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -269,6 +273,10 @@ export class AuthService {
 
   private generateResetToken(): string {
     return this.generateSessionToken(AUTH_SESSION_TOKEN_PREFIX.RESET_PASSWORD);
+  }
+
+  private hasStoredPassword(password: User['password']): password is string {
+    return typeof password === 'string' && password.length > 0;
   }
 
   private generateNumericCode(length: number): string {
@@ -628,6 +636,10 @@ export class AuthService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (!this.hasStoredPassword(user.password)) {
+      throw new BadRequestException('Current password is incorrect');
     }
 
     // Verify current password

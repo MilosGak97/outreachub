@@ -84,6 +84,11 @@ export class AuthRepository extends Repository<Admin> {
       throw new UnauthorizedException('Check your credentials');
     }
 
+    if (!this.hasStoredPassword(user.password)) {
+      this.logger.warn(`Sign-in failed: No stored password for email: ${email}`);
+      throw new UnauthorizedException('Please check your login credentials');
+    }
+
     this.logger.log(`User found with ID: ${user.id}. Verifying password...`);
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -149,6 +154,10 @@ export class AuthRepository extends Repository<Admin> {
     }
 
     if (oldPassword) {
+      if (!this.hasStoredPassword(user.password)) {
+        throw new BadRequestException('Old password is incorect');
+      }
+
       const passwordMatched = await bcrypt.compare(oldPassword, user.password);
 
       if (!passwordMatched) {
@@ -262,5 +271,9 @@ export class AuthRepository extends Repository<Admin> {
       }
       throw new UnauthorizedException('Error processing refresh token');
     }
+  }
+
+  private hasStoredPassword(password: Admin['password']): password is string {
+    return typeof password === 'string' && password.length > 0;
   }
 }
