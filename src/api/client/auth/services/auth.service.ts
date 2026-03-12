@@ -4,11 +4,10 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
-  HttpException,
   HttpStatus,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { randomBytes, randomInt } from 'crypto';
+import { randomBytes } from 'crypto';
 import { UserRepository } from '../../../repositories/postgres/users.repository';
 import { CompanyRepository } from '../../../repositories/postgres/company.repository';
 import { User } from '../../../entities/user.entity';
@@ -45,6 +44,18 @@ import {
   VerifyResetPasswordResponseDto,
   ResetPasswordResponseDto,
 } from '../dto/responses';
+import {
+  startVerificationForUser,
+  getUserByVerificationTokenOrThrow,
+  ensureVerificationTokenValidOrThrow,
+  getUserByResetTokenOrThrow,
+  ensureResetTokenValidOrThrow,
+  hasStoredPassword,
+  generateNumericCode,
+  getRetryAfterSeconds,
+  getExpiresInSeconds,
+  throwAuthError,
+} from './auth.helpers';
 
 @Injectable()
 export class AuthService {
@@ -75,7 +86,7 @@ export class AuthService {
       company,
     });
 
-    return this.startVerificationForUser(user, 'signup');
+    return startVerificationForUser(user, 'signup', this.userRepository, this.emailService);
   }
 
   async login(dto: LoginDto): Promise<LoginResponseDto> {
@@ -83,7 +94,7 @@ export class AuthService {
 
     const user = await this.userRepository.findByEmailWithCompany(email);
 
-    if (!user || !this.hasStoredPassword(user.password)) {
+    if (!user || !hasStoredPassword(user.password)) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -107,11 +118,11 @@ export class AuthService {
         user.verificationTokenExpiresAt < now;
 
       if (tokenExpired) {
-        const verificationContext = await this.startVerificationForUser(user, 'verify');
+        const verificationContext = await startVerificationForUser(user, 'verify', this.userRepository, this.emailService);
         return { error: AuthErrorCode.EMAIL_NOT_VERIFIED, ...verificationContext };
       }
 
-      const retryAfter = this.getRetryAfterSeconds(
+      const retryAfter = getRetryAfterSeconds(
         user.passcodeExpiresAt,
         EMAIL_VERIFICATION.CODE_EXPIRY_MINUTES,
         EMAIL_VERIFICATION.RESEND_COOLDOWN_SECONDS,
@@ -119,7 +130,7 @@ export class AuthService {
 
       const codeExpired = !user.passcodeExpiresAt || user.passcodeExpiresAt < now;
       if (codeExpired && retryAfter === 0) {
-        const passcode = this.generateNumericCode(EMAIL_VERIFICATION.CODE_LENGTH);
+        const passcode = generateNumericCode(EMAIL_VERIFICATION.CODE_LENGTH);
         user.passcode = await bcrypt.hash(passcode, 10);
         user.passcodeExpiresAt = new Date(
           now.getTime() + EMAIL_VERIFICATION.CODE_EXPIRY_MINUTES * 60 * 1000,
@@ -182,15 +193,17 @@ export class AuthService {
   // ==================== Email Verification ====================
 
   async getVerificationStatus(verificationToken: string): Promise<VerificationStatusResponseDto> {
-    const user = await this.getUserByVerificationTokenOrThrow(verificationToken);
-    await this.ensureVerificationTokenValidOrThrow(user);
+   // console.log('USER:', this.userRepository);
+    const user = await getUserByVerificationTokenOrThrow(verificationToken, this.userRepository);
+    console.log(user.id)
+    await ensureVerificationTokenValidOrThrow(user, this.userRepository);
     return {
-      retryAfter: this.getRetryAfterSeconds(
+      retryAfter: getRetryAfterSeconds(
         user.passcodeExpiresAt,
         EMAIL_VERIFICATION.CODE_EXPIRY_MINUTES,
         EMAIL_VERIFICATION.RESEND_COOLDOWN_SECONDS,
       ),
-      expiresIn: this.getExpiresInSeconds(user.verificationTokenExpiresAt),
+      expiresIn: getExpiresInSeconds(user.verificationTokenExpiresAt),
       email: user.email,
     };
   }
@@ -199,12 +212,12 @@ export class AuthService {
     verificationToken: string,
     dto: VerifyEmailDto,
   ): Promise<TokenPairResponseDto> {
-    const user = await this.getUserByVerificationTokenOrThrow(verificationToken);
-    await this.ensureVerificationTokenValidOrThrow(user);
+    const user = await getUserByVerificationTokenOrThrow(verificationToken, this.userRepository);
+    await ensureVerificationTokenValidOrThrow(user, this.userRepository);
 
     const isPasscodeValid = await bcrypt.compare(dto.code, user.passcode || '');
     if (!isPasscodeValid || !user.passcodeExpiresAt || user.passcodeExpiresAt < new Date()) {
-      this.throwAuthError(
+      throwAuthError(
         AuthErrorCode.INVALID_VERIFICATION_CODE,
         'The verification code is incorrect.',
       );
@@ -228,17 +241,17 @@ export class AuthService {
   async resendVerification(
     verificationToken: string,
   ): Promise<ResendVerificationResponseDto> {
-    const user = await this.getUserByVerificationTokenOrThrow(verificationToken);
-    await this.ensureVerificationTokenValidOrThrow(user);
+    const user = await getUserByVerificationTokenOrThrow(verificationToken, this.userRepository);
+    await ensureVerificationTokenValidOrThrow(user, this.userRepository);
 
-    const retryAfter = this.getRetryAfterSeconds(
+    const retryAfter = getRetryAfterSeconds(
       user.passcodeExpiresAt,
       EMAIL_VERIFICATION.CODE_EXPIRY_MINUTES,
       EMAIL_VERIFICATION.RESEND_COOLDOWN_SECONDS,
     );
 
     if (retryAfter > 0) {
-      this.throwAuthError(
+      throwAuthError(
         AuthErrorCode.RESEND_TOO_SOON,
         `You can request a new code in ${retryAfter} seconds.`,
         HttpStatus.BAD_REQUEST,
@@ -246,7 +259,7 @@ export class AuthService {
       );
     }
 
-    const passcode = this.generateNumericCode(EMAIL_VERIFICATION.CODE_LENGTH);
+    const passcode = generateNumericCode(EMAIL_VERIFICATION.CODE_LENGTH);
     user.passcode = await bcrypt.hash(passcode, 10);
     user.passcodeExpiresAt = new Date(
       Date.now() + EMAIL_VERIFICATION.CODE_EXPIRY_MINUTES * 60 * 1000,
@@ -277,7 +290,7 @@ export class AuthService {
 
     const resetPasswordToken = `${AUTH_SESSION_TOKEN_PREFIX.RESET_PASSWORD}${randomBytes(24).toString('hex')}`;
     const now = new Date();
-    const passcode = this.generateNumericCode(RESET_PASSWORD_SESSION.CODE_LENGTH);
+    const passcode = generateNumericCode(RESET_PASSWORD_SESSION.CODE_LENGTH);
 
     user.verificationToken = resetPasswordToken;
     user.verificationTokenExpiresAt = new Date(
@@ -296,15 +309,15 @@ export class AuthService {
   async getResetPasswordStatus(
     resetPasswordToken: string,
   ): Promise<ResetPasswordStatusResponseDto> {
-    const user = await this.getUserByResetTokenOrThrow(resetPasswordToken);
-    await this.ensureResetTokenValidOrThrow(user);
+    const user = await getUserByResetTokenOrThrow(resetPasswordToken, this.userRepository);
+    await ensureResetTokenValidOrThrow(user, this.userRepository);
     return {
-      retryAfter: this.getRetryAfterSeconds(
+      retryAfter: getRetryAfterSeconds(
         user.passcodeExpiresAt,
         RESET_PASSWORD_SESSION.TOKEN_EXPIRY_MINUTES,
         RESET_PASSWORD_SESSION.RESEND_COOLDOWN_SECONDS,
       ),
-      expiresIn: this.getExpiresInSeconds(user.verificationTokenExpiresAt),
+      expiresIn: getExpiresInSeconds(user.verificationTokenExpiresAt),
       email: user.email,
     };
   }
@@ -313,12 +326,12 @@ export class AuthService {
     resetPasswordToken: string,
     dto: VerifyResetPasswordDto,
   ): Promise<VerifyResetPasswordResponseDto> {
-    const user = await this.getUserByResetTokenOrThrow(resetPasswordToken);
-    await this.ensureResetTokenValidOrThrow(user);
+    const user = await getUserByResetTokenOrThrow(resetPasswordToken, this.userRepository);
+    await ensureResetTokenValidOrThrow(user, this.userRepository);
 
     const isPasscodeValid = await bcrypt.compare(dto.code, user.passcode || '');
     if (!isPasscodeValid || !user.passcodeExpiresAt || user.passcodeExpiresAt < new Date()) {
-      this.throwAuthError(AuthErrorCode.INVALID_RESET_CODE, 'The reset code is incorrect.');
+      throwAuthError(AuthErrorCode.INVALID_RESET_CODE, 'The reset code is incorrect.');
     }
 
     return { message: 'Reset code verified.' };
@@ -327,17 +340,17 @@ export class AuthService {
   async resendResetPassword(
     resetPasswordToken: string,
   ): Promise<ResendResetPasswordResponseDto> {
-    const user = await this.getUserByResetTokenOrThrow(resetPasswordToken);
-    await this.ensureResetTokenValidOrThrow(user);
+    const user = await getUserByResetTokenOrThrow(resetPasswordToken, this.userRepository);
+    await ensureResetTokenValidOrThrow(user, this.userRepository);
 
-    const retryAfter = this.getRetryAfterSeconds(
+    const retryAfter = getRetryAfterSeconds(
       user.passcodeExpiresAt,
       RESET_PASSWORD_SESSION.TOKEN_EXPIRY_MINUTES,
       RESET_PASSWORD_SESSION.RESEND_COOLDOWN_SECONDS,
     );
 
     if (retryAfter > 0) {
-      this.throwAuthError(
+      throwAuthError(
         AuthErrorCode.RESEND_TOO_SOON,
         `You can request a new code in ${retryAfter} seconds.`,
         HttpStatus.BAD_REQUEST,
@@ -345,7 +358,7 @@ export class AuthService {
       );
     }
 
-    const passcode = this.generateNumericCode(RESET_PASSWORD_SESSION.CODE_LENGTH);
+    const passcode = generateNumericCode(RESET_PASSWORD_SESSION.CODE_LENGTH);
     user.passcode = await bcrypt.hash(passcode, 10);
     user.passcodeExpiresAt = new Date(
       Date.now() + RESET_PASSWORD_SESSION.TOKEN_EXPIRY_MINUTES * 60 * 1000,
@@ -363,12 +376,12 @@ export class AuthService {
     resetPasswordToken: string,
     dto: ResetPasswordDto,
   ): Promise<ResetPasswordResponseDto> {
-    const user = await this.getUserByResetTokenOrThrow(resetPasswordToken);
-    await this.ensureResetTokenValidOrThrow(user);
+    const user = await getUserByResetTokenOrThrow(resetPasswordToken, this.userRepository);
+    await ensureResetTokenValidOrThrow(user, this.userRepository);
 
     const isPasscodeValid = await bcrypt.compare(dto.code, user.passcode || '');
     if (!isPasscodeValid || !user.passcodeExpiresAt || user.passcodeExpiresAt < new Date()) {
-      this.throwAuthError(AuthErrorCode.INVALID_RESET_CODE, 'The reset code is incorrect.');
+      throwAuthError(AuthErrorCode.INVALID_RESET_CODE, 'The reset code is incorrect.');
     }
 
     user.password = await bcrypt.hash(dto.newPassword, 10);
@@ -388,7 +401,7 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    if (!this.hasStoredPassword(user.password)) {
+    if (!hasStoredPassword(user.password)) {
       throw new BadRequestException('Current password is incorrect');
     }
 
@@ -449,139 +462,4 @@ export class AuthService {
     };
   }
 
-  // ==================== Private Helpers ====================
-
-  private async startVerificationForUser(
-    user: User,
-    emailTemplate: 'signup' | 'verify',
-  ): Promise<VerificationTokenResponseDto> {
-    const now = new Date();
-    const passcode = this.generateNumericCode(EMAIL_VERIFICATION.CODE_LENGTH);
-
-    user.verificationToken = `${AUTH_SESSION_TOKEN_PREFIX.VERIFICATION}${randomBytes(24).toString('hex')}`;
-    user.verificationTokenExpiresAt = new Date(
-      now.getTime() + EMAIL_VERIFICATION.TOKEN_EXPIRY_MINUTES * 60 * 1000,
-    );
-    user.passcode = await bcrypt.hash(passcode, 10);
-    user.passcodeExpiresAt = new Date(
-      now.getTime() + EMAIL_VERIFICATION.CODE_EXPIRY_MINUTES * 60 * 1000,
-    );
-    await this.userRepository.save(user);
-
-    if (emailTemplate === 'signup') {
-      await this.emailService.userSignUp(
-        user.email,
-        passcode,
-        EMAIL_VERIFICATION.TOKEN_EXPIRY_MINUTES,
-      );
-    } else {
-      await this.emailService.resendEmailVerification(
-        user.email,
-        passcode,
-        EMAIL_VERIFICATION.TOKEN_EXPIRY_MINUTES,
-      );
-    }
-
-    return {
-      verificationToken: user.verificationToken,
-      retryAfter: EMAIL_VERIFICATION.RESEND_COOLDOWN_SECONDS,
-    };
-  }
-
-  private async getUserByVerificationTokenOrThrow(verificationToken: string): Promise<User> {
-    if (!verificationToken || !verificationToken.startsWith(AUTH_SESSION_TOKEN_PREFIX.VERIFICATION)) {
-      this.throwAuthError(
-        AuthErrorCode.VERIFICATION_TOKEN_INVALID,
-        'Invalid verification session.',
-      );
-    }
-
-    const user = await this.userRepository.findByVerificationToken(verificationToken);
-    if (!user) {
-      this.throwAuthError(
-        AuthErrorCode.VERIFICATION_TOKEN_INVALID,
-        'Invalid verification session.',
-      );
-    }
-    return user;
-  }
-
-  private async ensureVerificationTokenValidOrThrow(user: User): Promise<void> {
-    if (!user.verificationTokenExpiresAt || user.verificationTokenExpiresAt < new Date()) {
-      await this.userRepository.update(user.id, {
-        verificationToken: null,
-        verificationTokenExpiresAt: null,
-        passcode: null,
-        passcodeExpiresAt: null,
-      });
-      this.throwAuthError(
-        AuthErrorCode.VERIFICATION_TOKEN_EXPIRED,
-        'Your verification session has expired.',
-        HttpStatus.GONE,
-      );
-    }
-  }
-
-  private async getUserByResetTokenOrThrow(resetPasswordToken: string): Promise<User> {
-    if (!resetPasswordToken || !resetPasswordToken.startsWith(AUTH_SESSION_TOKEN_PREFIX.RESET_PASSWORD)) {
-      this.throwAuthError(AuthErrorCode.RESET_TOKEN_INVALID, 'Invalid reset session.');
-    }
-
-    const user = await this.userRepository.findByVerificationToken(resetPasswordToken);
-    if (!user) {
-      this.throwAuthError(AuthErrorCode.RESET_TOKEN_INVALID, 'Invalid reset session.');
-    }
-    return user;
-  }
-
-  private async ensureResetTokenValidOrThrow(user: User): Promise<void> {
-    if (!user.verificationTokenExpiresAt || user.verificationTokenExpiresAt < new Date()) {
-      await this.userRepository.update(user.id, {
-        verificationToken: null,
-        verificationTokenExpiresAt: null,
-        passcode: null,
-        passcodeExpiresAt: null,
-      });
-      this.throwAuthError(
-        AuthErrorCode.RESET_TOKEN_EXPIRED,
-        'Your reset session has expired.',
-        HttpStatus.GONE,
-      );
-    }
-  }
-
-  private hasStoredPassword(password: User['password']): password is string {
-    return typeof password === 'string' && password.length > 0;
-  }
-
-  private generateNumericCode(length: number): string {
-    const min = 10 ** (length - 1);
-    const max = 10 ** length - 1;
-    return randomInt(min, max + 1).toString();
-  }
-
-  private getRetryAfterSeconds(
-    passcodeExpiresAt: Date | null | undefined,
-    expiryMinutes: number,
-    cooldownSeconds: number,
-  ): number {
-    if (!passcodeExpiresAt) return 0;
-    const sentAt = new Date(passcodeExpiresAt.getTime() - expiryMinutes * 60 * 1000);
-    const elapsedSeconds = Math.floor((Date.now() - sentAt.getTime()) / 1000);
-    return Math.max(0, cooldownSeconds - elapsedSeconds);
-  }
-
-  private getExpiresInSeconds(expiresAt: Date | null | undefined): number {
-    if (!expiresAt) return 0;
-    return Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-  }
-
-  private throwAuthError(
-    errorCode: AuthErrorCode,
-    message: string,
-    status: HttpStatus = HttpStatus.BAD_REQUEST,
-    extra: Record<string, unknown> = {},
-  ): never {
-    throw new HttpException({ errorCode, message, ...extra }, status);
-  }
 }
