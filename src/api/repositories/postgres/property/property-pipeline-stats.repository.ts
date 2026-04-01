@@ -39,169 +39,58 @@ export class PropertyPipelineStatsRepository {
     }
 
     const normalizedStates = this.normalizeStateFilter(stateFilter);
-    const propertyStateFilter = this.buildStateFilterClause('state', normalizedStates, 1);
+    const propertyStateFilter = this.buildStateFilterClause('p.state', normalizedStates, 2);
 
-    const enrichmentStateFilter = this.buildStateFilterClause('p.state', normalizedStates, 2);
-    const filteredStateFilter = this.buildStateFilterClause('p.state', normalizedStates, 2);
-    const importStateFilter = this.buildStateFilterClause('p.state', normalizedStates, 2);
-
-    const [
-      enrichedRemainingRows,
-      mosaicRemainingRows,
-      filteredRemainingRows,
-      enrichedCompletedRows,
-      mosaicCompletedRows,
-      filteredCompletedRows,
-      importCompletedRows,
-    ] = await Promise.all([
-      this.dataSource.query(
-        `
+    const rows = await this.dataSource.query(
+      `
+      WITH imported_properties AS (
         SELECT
-          state AS state,
-          COUNT(*) AS enriched_remaining
-        FROM properties
-        WHERE state IS NOT NULL
-          AND (enriched = false OR enriched IS NULL)
+          p.id,
+          p.state,
+          p.enriched,
+          p.mosaic,
+          p.filtered
+        FROM properties p
+        WHERE p.state IS NOT NULL
           ${propertyStateFilter.clause}
-        GROUP BY state
-      `,
-        propertyStateFilter.params,
-      ),
-      this.dataSource.query(
-        `
-        SELECT
-          state AS state,
-          COUNT(*) AS mosaic_remaining
-        FROM properties
-        WHERE state IS NOT NULL
-          AND enriched = true
-          AND (mosaic = false OR mosaic IS NULL)
-          ${propertyStateFilter.clause}
-        GROUP BY state
-      `,
-        propertyStateFilter.params,
-      ),
-      this.dataSource.query(
-        `
-        SELECT
-          p.state AS state,
-          COUNT(*) AS mosaic_completed
-        FROM "property-mosaic" pm
-        JOIN properties p ON p.id = pm.property_id
-        WHERE p.state IS NOT NULL
-          AND pm.created_at >= $1::date
-          AND pm.created_at < ($1::date + interval '1 day')
-          ${enrichmentStateFilter.clause}
-        GROUP BY p.state
-      `,
-        [runDate, ...enrichmentStateFilter.params],
-      ),
-      this.dataSource.query(
-        `
-        SELECT
-          state AS state,
-          COUNT(*) AS filtered_remaining
-        FROM properties
-        WHERE state IS NOT NULL
-          AND (filtered = false OR filtered IS NULL)
-          ${propertyStateFilter.clause}
-        GROUP BY state
-      `,
-        propertyStateFilter.params,
-      ),
-      this.dataSource.query(
-        `
-        SELECT
-          p.state AS state,
-          COUNT(*) AS enriched_completed
-        FROM "property-base-enrichment" be
-        JOIN properties p ON p.id = be.property_id
-        WHERE p.state IS NOT NULL
-          AND be.created_at >= $1::date
-          AND be.created_at < ($1::date + interval '1 day')
-          ${enrichmentStateFilter.clause}
-        GROUP BY p.state
-      `,
-        [runDate, ...enrichmentStateFilter.params],
-      ),
-      this.dataSource.query(
-        `
-        SELECT
-          p.state AS state,
-          COUNT(*) AS filtered_completed
-        FROM "property-ai-filtering" paf
-        JOIN properties p ON p.id = paf.property_id
-        WHERE p.state IS NOT NULL
-          AND paf.created_at >= $1::date
-          AND paf.created_at < ($1::date + interval '1 day')
-          ${filteredStateFilter.clause}
-        GROUP BY p.state
-      `,
-        [runDate, ...filteredStateFilter.params],
-      ),
-      this.dataSource.query(
-        `
-        SELECT
-          p.state AS state,
-          COUNT(*) AS import_completed
-        FROM "property-listings" pl
-        JOIN properties p ON p.id = pl.property_id
-        WHERE p.state IS NOT NULL
-          AND pl.created_at >= $1::date
-          AND pl.created_at < ($1::date + interval '1 day')
-          ${importStateFilter.clause}
-        GROUP BY p.state
-      `,
-        [runDate, ...importStateFilter.params],
-      ),
-    ]);
+          AND EXISTS (
+            SELECT 1
+            FROM "property-listings" pl
+            WHERE pl.property_id = p.id
+              AND pl.created_at >= $1::date
+          )
+      )
+      SELECT
+        state AS state,
+        COUNT(*) FILTER (WHERE enriched = true) AS enriched_completed,
+        COUNT(*) FILTER (WHERE enriched = false OR enriched IS NULL) AS enriched_remaining,
+        COUNT(*) FILTER (WHERE mosaic = true) AS mosaic_completed,
+        COUNT(*) FILTER (
+          WHERE enriched = true
+            AND (mosaic = false OR mosaic IS NULL)
+        ) AS mosaic_remaining,
+        COUNT(*) FILTER (WHERE filtered = true) AS filtered_completed,
+        COUNT(*) FILTER (
+          WHERE mosaic = true
+            AND (filtered = false OR filtered IS NULL)
+        ) AS filtered_remaining,
+        COUNT(*) AS import_completed
+      FROM imported_properties
+      GROUP BY state
+    `,
+      [runDate, ...propertyStateFilter.params],
+    );
 
-    for (const row of enrichedRemainingRows ?? []) {
-      const state = String(row.state || '').toUpperCase() as StatesAbbreviation;
-      const entry = perState.get(state);
-      if (!entry) continue;
-      entry.enrichedRemaining = Number(row.enriched_remaining ?? 0);
-    }
-
-    for (const row of mosaicRemainingRows ?? []) {
-      const state = String(row.state || '').toUpperCase() as StatesAbbreviation;
-      const entry = perState.get(state);
-      if (!entry) continue;
-      entry.mosaicRemaining = Number(row.mosaic_remaining ?? 0);
-    }
-
-    for (const row of mosaicCompletedRows ?? []) {
-      const state = String(row.state || '').toUpperCase() as StatesAbbreviation;
-      const entry = perState.get(state);
-      if (!entry) continue;
-      entry.mosaicCompleted = Number(row.mosaic_completed ?? 0);
-    }
-
-    for (const row of filteredRemainingRows ?? []) {
-      const state = String(row.state || '').toUpperCase() as StatesAbbreviation;
-      const entry = perState.get(state);
-      if (!entry) continue;
-      entry.filteredRemaining = Number(row.filtered_remaining ?? 0);
-    }
-
-    for (const row of enrichedCompletedRows ?? []) {
+    for (const row of rows ?? []) {
       const state = String(row.state || '').toUpperCase() as StatesAbbreviation;
       const entry = perState.get(state);
       if (!entry) continue;
       entry.enrichedCompleted = Number(row.enriched_completed ?? 0);
-    }
-
-    for (const row of filteredCompletedRows ?? []) {
-      const state = String(row.state || '').toUpperCase() as StatesAbbreviation;
-      const entry = perState.get(state);
-      if (!entry) continue;
+      entry.enrichedRemaining = Number(row.enriched_remaining ?? 0);
+      entry.mosaicCompleted = Number(row.mosaic_completed ?? 0);
+      entry.mosaicRemaining = Number(row.mosaic_remaining ?? 0);
       entry.filteredCompleted = Number(row.filtered_completed ?? 0);
-    }
-
-    for (const row of importCompletedRows ?? []) {
-      const state = String(row.state || '').toUpperCase() as StatesAbbreviation;
-      const entry = perState.get(state);
-      if (!entry) continue;
+      entry.filteredRemaining = Number(row.filtered_remaining ?? 0);
       entry.importCompleted = Number(row.import_completed ?? 0);
     }
 
