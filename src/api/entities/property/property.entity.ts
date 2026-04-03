@@ -37,7 +37,7 @@ export class Property {
     countyId?: string;
 
     /* FILLED OUT BY OUR SCRAPPER */
-    @Index()
+    @Index('idx_properties_zpid_unique', { unique: true })
     @ApiProperty({required: false})
     @Type(() => String)
     @IsNumberString()

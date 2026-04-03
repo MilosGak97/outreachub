@@ -12,7 +12,7 @@ import {Property} from "./property.entity";
 import {PropertyStatus} from "../../enums/property/property-status.enum";
 
 @Entity('property-listings')
-@Index('idx_pl_prop_status_unique', ['property', 'status'])
+@Index('idx_pl_prop_status_unique', ['property', 'status'], { unique: true })
 export class PropertyListing {
     @ApiProperty({required: true})
     @PrimaryGeneratedColumn('uuid')

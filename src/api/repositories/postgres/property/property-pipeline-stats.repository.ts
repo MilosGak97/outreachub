@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { StatesAbbreviation } from '../../../enums/common/states-abbreviation.enum';
+import { AiStatus } from '../../../enums/property/ai-status.enum';
+import { AiFilteringJobStatus } from '../../../enums/property/ai-filtering-job-status.enum';
 
 export type PropertyPipelineStats = {
   enrichedRemaining: number;
@@ -39,7 +41,7 @@ export class PropertyPipelineStatsRepository {
     }
 
     const normalizedStates = this.normalizeStateFilter(stateFilter);
-    const propertyStateFilter = this.buildStateFilterClause('p.state', normalizedStates, 2);
+    const propertyStateFilter = this.buildStateFilterClause('p.state', normalizedStates, 4);
 
     const rows = await this.dataSource.query(
       `
@@ -49,8 +51,11 @@ export class PropertyPipelineStatsRepository {
           p.state,
           p.enriched,
           p.mosaic,
-          p.filtered
+          p.ai_status,
+          paf.job_status AS ai_job_status,
+          paf.filtered_status AS ai_filtered_status
         FROM properties p
+        LEFT JOIN "property-ai-filtering" paf ON paf.property_id = p.id
         WHERE p.state IS NOT NULL
           ${propertyStateFilter.clause}
           AND EXISTS (
@@ -69,16 +74,22 @@ export class PropertyPipelineStatsRepository {
           WHERE enriched = true
             AND (mosaic = false OR mosaic IS NULL)
         ) AS mosaic_remaining,
-        COUNT(*) FILTER (WHERE filtered = true) AS filtered_completed,
+        COUNT(*) FILTER (
+          WHERE ai_status = $2
+            OR (ai_job_status = $3 AND ai_filtered_status IS NOT NULL)
+        ) AS filtered_completed,
         COUNT(*) FILTER (
           WHERE mosaic = true
-            AND (filtered = false OR filtered IS NULL)
+            AND NOT (
+              ai_status = $2
+              OR (ai_job_status = $3 AND ai_filtered_status IS NOT NULL)
+            )
         ) AS filtered_remaining,
         COUNT(*) AS import_completed
       FROM imported_properties
       GROUP BY state
     `,
-      [runDate, ...propertyStateFilter.params],
+      [runDate, AiStatus.FILTERED, AiFilteringJobStatus.COMPLETED, ...propertyStateFilter.params],
     );
 
     for (const row of rows ?? []) {
