@@ -264,7 +264,7 @@ export function applyListingSearchFilters(qb: SelectQueryBuilder<PropertyListing
       clause += ')';
       clauses.push(clause);
     });
-    qb.andWhere(clauses.join(' OR '), params);
+    qb.andWhere(`(${clauses.join(' OR ')})`, params);
   }
 }
 
