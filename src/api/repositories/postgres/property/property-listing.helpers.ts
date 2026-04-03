@@ -11,6 +11,8 @@ type CountyFilter = {
   state?: string;
 };
 
+const COUNTY_SQL_EXPRESSION = `REGEXP_REPLACE(REPLACE(COALESCE(baseEnrichment.countyZillow, property.countyZillow), ' ', '_'), '_(County|Borough|Parish)$', '', 'i')`;
+
 export function getUtcTodayRangeIso(): { from: string; to: string; toExclusive: string } {
   const now = new Date();
   const fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
@@ -78,7 +80,7 @@ export function createListingSearchOptimizedQuery(repository: Repository<Propert
     .addSelect('baseEnrichment.realtorName', 'base_realtor_name')
     .addSelect('baseEnrichment.realtorPhone', 'base_realtor_phone')
     .addSelect('baseEnrichment.brokerName', 'base_broker_name')
-    .addSelect('baseEnrichment.countyZillow', 'base_county_zillow');
+    .addSelect('COALESCE(baseEnrichment.countyZillow, property.countyZillow)', 'listing_county');
   return qb;
 }
 
@@ -255,7 +257,7 @@ export function applyListingSearchFilters(qb: SelectQueryBuilder<PropertyListing
     countyFilters.forEach((filter, index) => {
       const countyParam = `countyZillow${index}`;
       const stateParam = `countyState${index}`;
-      let clause = `(LOWER(baseEnrichment.countyZillow) = LOWER(:${countyParam})`;
+      let clause = `(LOWER(${COUNTY_SQL_EXPRESSION}) = LOWER(:${countyParam})`;
       params[countyParam] = filter.countyZillow;
       if (filter.state) {
         clause += ` AND property.state = :${stateParam}`;
@@ -284,7 +286,7 @@ export function mapListingRawToItemDto(row: Record<string, any>): PropertyListin
   const bedroomsValue = row.property_bedrooms;
   const bathroomsValue = row.property_bathrooms;
   const photoCountValue = row.base_photo_count;
-  const countyName = formatCountyDisplayName(row.base_county_zillow);
+  const countyName = formatCountyDisplayName(row.listing_county);
 
   return {
     listingId: row.listing_id,
