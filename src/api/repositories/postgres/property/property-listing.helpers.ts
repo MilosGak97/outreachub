@@ -268,6 +268,7 @@ export function applyListingSearchFilters(qb: SelectQueryBuilder<PropertyListing
     });
     qb.andWhere(`(${clauses.join(' OR ')})`, params);
   }
+
 }
 
 export function applyListingSearchSort(qb: SelectQueryBuilder<PropertyListing>): void {
@@ -312,6 +313,7 @@ export function mapListingRawToItemDto(row: Record<string, any>): PropertyListin
     realtorName: row.base_realtor_name,
     realtorPhone: row.base_realtor_phone,
     brokerName: row.base_broker_name,
+    brokerPhone: row.base_brokerage_phone,
     mosaicS3Key: row.base_mosaic_s3_key,
     county: countyName,
     createdAt: row.listing_created_at,

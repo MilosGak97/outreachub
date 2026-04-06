@@ -84,6 +84,9 @@ export class PropertyListingItemDto {
   brokerName?: string;
 
   @ApiPropertyOptional()
+  brokerPhone?: string;
+
+  @ApiPropertyOptional()
   mosaicS3Key?: string;
 
   @ApiPropertyOptional()

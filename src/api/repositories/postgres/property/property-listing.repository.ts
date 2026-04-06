@@ -1,6 +1,6 @@
 import { Injectable, StreamableFile } from '@nestjs/common';
 import { Readable } from 'stream';
-import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PropertyListing } from '../../../entities/property/property-listing.entity';
 import { PropertyListingsSearchDto } from '../../../admin/properties/dto/property-listings-search.dto';
 import { PropertyListingsSearchResponseDto } from '../../../admin/properties/dto/property-listings-response.dto';
@@ -40,7 +40,10 @@ export class PropertyListingRepository extends Repository<PropertyListing> {
 
     const qb = createListingSearchOptimizedQuery(this);
     applyListingSearchFilters(qb, dto);
+    applyListingSearchSort(qb)
     qb.offset(offset).limit(limit);
+
+
 
     const rows = await qb.getRawMany<Record<string, any>>();
     const records: PropertyListingItemDto[] = rows.map((row) => mapListingRawToItemDto(row));
