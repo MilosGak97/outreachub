@@ -190,6 +190,13 @@ export class PropertyListingsSearchDto {
   @IsString()
   zpid?: string;
 
+  @ApiPropertyOptional({ description: 'Exclude properties with these ZIP codes', isArray: true, type: String })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => toStringArray<string>(value), { toClassOnly: true })
+  excludeZipCodes?: string[];
+
   @ApiPropertyOptional({ description: 'Limit', default: 50, maximum: 500 })
   @IsOptional()
   @Type(() => Number)

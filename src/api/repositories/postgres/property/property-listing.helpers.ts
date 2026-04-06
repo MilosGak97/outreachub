@@ -7,11 +7,12 @@ import { FilteredStatus } from '../../../enums/property/filtered-status.enum';
 import { HomeType } from '../../../enums/property/home-type.enum';
 
 type CountyFilter = {
-  countyZillow: string;
+  countyName: string;
+  countyLookupName: string;
   state?: string;
 };
 
-const COUNTY_SQL_EXPRESSION = `REGEXP_REPLACE(REPLACE(COALESCE(baseEnrichment.countyZillow, property.countyZillow), ' ', '_'), '_(County|Borough|Parish)$', '', 'i')`;
+const PROPERTY_COUNTY_SQL_EXPRESSION = `REGEXP_REPLACE(TRIM(property.countyZillow), '\\s+(County|Borough|Parish)$', '', 'i')`;
 
 export function getUtcTodayRangeIso(): { from: string; to: string; toExclusive: string } {
   const now = new Date();
@@ -80,7 +81,7 @@ export function createListingSearchOptimizedQuery(repository: Repository<Propert
     .addSelect('baseEnrichment.realtorName', 'base_realtor_name')
     .addSelect('baseEnrichment.realtorPhone', 'base_realtor_phone')
     .addSelect('baseEnrichment.brokerName', 'base_broker_name')
-    .addSelect('COALESCE(baseEnrichment.countyZillow, property.countyZillow)', 'listing_county');
+    .addSelect('property.countyZillow', 'listing_county');
   return qb;
 }
 
@@ -250,15 +251,19 @@ export function applyListingSearchFilters(qb: SelectQueryBuilder<PropertyListing
     qb.andWhere('baseEnrichment.photoCount <= :photoCountMax', { photoCountMax: dto.photoCountMax });
   }
 
+  if (dto.excludeZipCodes?.length) {
+    qb.andWhere('property.zipcode NOT IN (:...excludeZipCodes)', { excludeZipCodes: dto.excludeZipCodes });
+  }
+
   const countyFilters = buildCountyFilters(dto.counties);
   if (countyFilters.length > 0) {
     const clauses: string[] = [];
     const params: Record<string, unknown> = {};
     countyFilters.forEach((filter, index) => {
-      const countyParam = `countyZillow${index}`;
+      const countyParam = `countyName${index}`;
       const stateParam = `countyState${index}`;
-      let clause = `(LOWER(${COUNTY_SQL_EXPRESSION}) = LOWER(:${countyParam})`;
-      params[countyParam] = filter.countyZillow;
+      let clause = `(LOWER(${PROPERTY_COUNTY_SQL_EXPRESSION}) = LOWER(:${countyParam})`;
+      params[countyParam] = filter.countyLookupName;
       if (filter.state) {
         clause += ` AND property.state = :${stateParam}`;
         params[stateParam] = filter.state;
@@ -368,20 +373,13 @@ export function buildCountyFilters(values?: string[]): CountyFilter[] {
     const rawName = lastComma >= 0 ? trimmed.slice(0, lastComma).trim() : trimmed;
     const rawState = lastComma >= 0 ? trimmed.slice(lastComma + 1).trim() : undefined;
     if (!rawName) continue;
-
-    const cleanedName = rawName.replace(/\s+(County|Borough|Parish)$/i, '').trim() || rawName;
-    const normalizedCounty = cleanedName
-      .replace(/\s+/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_+|_+$/g, '');
-
-    if (!normalizedCounty) continue;
+    const countyLookupName = rawName.replace(/\s+(County|Borough|Parish)$/i, '').trim() || rawName;
 
     const state = rawState ? rawState.toUpperCase() : undefined;
-    const key = `${normalizedCounty}|${state || ''}`;
+    const key = `${rawName.toLowerCase()}|${state || ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    filters.push({ countyZillow: normalizedCounty, state });
+    filters.push({ countyName: rawName, countyLookupName, state });
   }
   return filters;
 }
