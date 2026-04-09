@@ -11,7 +11,7 @@ describe('property-listing.helpers county filters', () => {
     ]);
   });
 
-  it('matches counties exactly against either county_zillow or the linked county row', () => {
+  it('matches counties exactly against property, base enrichment, or the linked county row', () => {
     const andWhere = jest.fn().mockReturnThis();
     const qb = { andWhere } as any;
 
@@ -22,7 +22,7 @@ describe('property-listing.helpers county filters', () => {
 
     expect(andWhere).toHaveBeenCalledWith(
       expect.stringContaining(
-        "(((LOWER(REGEXP_REPLACE(TRIM(property.countyZillow), '\\s+(County|Borough|Parish)$', '', 'i')) = LOWER(:countyName0) AND property.state = :countyState0) OR (LOWER(REGEXP_REPLACE(TRIM(county.name), '\\s+(County|Borough|Parish)$', '', 'i')) = LOWER(:countyName0) AND county.state = :countyState0)))",
+        "(((LOWER(REGEXP_REPLACE(TRIM(property.countyZillow), '\\s+(County|Borough|Parish)$', '', 'i')) = LOWER(:countyName0) AND property.state = :countyState0) OR (LOWER(REGEXP_REPLACE(TRIM(baseEnrichment.countyZillow), '\\s+(County|Borough|Parish)$', '', 'i')) = LOWER(:countyName0) AND property.state = :countyState0) OR (LOWER(REGEXP_REPLACE(TRIM(county.name), '\\s+(County|Borough|Parish)$', '', 'i')) = LOWER(:countyName0) AND county.state = :countyState0)))",
       ),
       {
         countyName0: 'Cook',
