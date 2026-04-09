@@ -13,6 +13,7 @@ type CountyFilter = {
 };
 
 const PROPERTY_COUNTY_SQL_EXPRESSION = `REGEXP_REPLACE(TRIM(property.countyZillow), '\\s+(County|Borough|Parish)$', '', 'i')`;
+const COUNTY_ENTITY_NAME_SQL_EXPRESSION = `REGEXP_REPLACE(TRIM(county.name), '\\s+(County|Borough|Parish)$', '', 'i')`;
 
 export function getUtcTodayRangeIso(): { from: string; to: string; toExclusive: string } {
   const now = new Date();
@@ -49,6 +50,7 @@ export function createListingSearchOptimizedBaseQuery(
   return repository
     .createQueryBuilder('pl')
     .innerJoin('pl.property', 'property')
+    .leftJoin('property.county', 'county')
     .leftJoin('property.aiFiltering', 'aiFiltering')
     .leftJoin('property.baseEnrichment', 'baseEnrichment');
 }
@@ -262,13 +264,17 @@ export function applyListingSearchFilters(qb: SelectQueryBuilder<PropertyListing
     countyFilters.forEach((filter, index) => {
       const countyParam = `countyName${index}`;
       const stateParam = `countyState${index}`;
-      let clause = `(LOWER(${PROPERTY_COUNTY_SQL_EXPRESSION}) = LOWER(:${countyParam})`;
       params[countyParam] = filter.countyLookupName;
+      const propertyConditions = [`LOWER(${PROPERTY_COUNTY_SQL_EXPRESSION}) = LOWER(:${countyParam})`];
+      const countyEntityConditions = [`LOWER(${COUNTY_ENTITY_NAME_SQL_EXPRESSION}) = LOWER(:${countyParam})`];
+
       if (filter.state) {
-        clause += ` AND property.state = :${stateParam}`;
         params[stateParam] = filter.state;
+        propertyConditions.push(`property.state = :${stateParam}`);
+        countyEntityConditions.push(`county.state = :${stateParam}`);
       }
-      clause += ')';
+
+      const clause = `((${propertyConditions.join(' AND ')}) OR (${countyEntityConditions.join(' AND ')}))`;
       clauses.push(clause);
     });
     qb.andWhere(`(${clauses.join(' OR ')})`, params);
